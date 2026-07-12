@@ -447,144 +447,146 @@ export function DomainsInventory({
               No domains yet. Add your first domain to start tracking inventory.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableHead
-                    label="Domain"
-                    sortKey="hostname"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <SortableHead
-                    label="Title"
-                    sortKey="title"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <SortableHead
-                    label="DR"
-                    sortKey="dr"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <SortableHead
-                    label="Backlinks"
-                    sortKey="backlinks"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <SortableHead
-                    label="Ref. domains"
-                    sortKey="refdomains"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <SortableHead
-                    label="Social"
-                    sortKey="social"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <SortableHead
-                    label="Last synced"
-                    sortKey="synced"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pagination.pageItems.map((domain) => {
-                  const metrics = metricsOf(domain);
-                  const href = `/${brand.slug}/domains/${domain.id}`;
-                  return (
-                    <TableRow
-                      key={domain.id}
-                      className="cursor-pointer"
-                      onClick={() => router.push(href)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          router.push(href);
-                        }
-                      }}
-                      tabIndex={0}
-                      role="link"
-                    >
-                      <TableCell>
-                        <span className="font-medium">{domain.hostname}</span>
-                        {domain.ahrefs_sync_error && (
-                          <p
-                            className="mt-1 max-w-xs truncate text-xs text-destructive"
-                            title={domain.ahrefs_sync_error}
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableHead
+                      label="Domain"
+                      sortKey="hostname"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Title"
+                      sortKey="title"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="DR"
+                      sortKey="dr"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Backlinks"
+                      sortKey="backlinks"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Ref. domains"
+                      sortKey="refdomains"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Social"
+                      sortKey="social"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Last synced"
+                      sortKey="synced"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagination.pageItems.map((domain) => {
+                    const metrics = metricsOf(domain);
+                    const href = `/${brand.slug}/domains/${domain.id}`;
+                    return (
+                      <TableRow
+                        key={domain.id}
+                        className="cursor-pointer"
+                        onClick={() => router.push(href)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            router.push(href);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="link"
+                      >
+                        <TableCell>
+                          <span className="font-medium">{domain.hostname}</span>
+                          {domain.ahrefs_sync_error && (
+                            <p
+                              className="mt-1 max-w-xs truncate text-xs text-destructive"
+                              title={domain.ahrefs_sync_error}
+                            >
+                              {domain.ahrefs_sync_error}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                          {domain.title || "—"}
+                        </TableCell>
+                        <TableCell className="table-numeric">
+                          {formatNumber(metrics?.domain_rating ?? null)}
+                        </TableCell>
+                        <TableCell className="table-numeric">
+                          {formatNumber(metrics?.backlinks ?? null)}
+                        </TableCell>
+                        <TableCell className="table-numeric">
+                          {formatNumber(metrics?.refdomains ?? null)}
+                        </TableCell>
+                        <TableCell className="table-numeric">
+                          {domain.domain_social_signals?.length ?? 0}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {domain.ahrefs_last_synced_at
+                            ? formatDistanceToNow(
+                                new Date(domain.ahrefs_last_synced_at),
+                                { addSuffix: true },
+                              )
+                            : "Never"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget({
+                                id: domain.id,
+                                hostname: domain.hostname,
+                              });
+                            }}
+                            disabled={pending}
                           >
-                            {domain.ahrefs_sync_error}
-                          </p>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                        {domain.title || "—"}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(metrics?.domain_rating ?? null)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(metrics?.backlinks ?? null)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(metrics?.refdomains ?? null)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {domain.domain_social_signals?.length ?? 0}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {domain.ahrefs_last_synced_at
-                          ? formatDistanceToNow(
-                              new Date(domain.ahrefs_last_synced_at),
-                              { addSuffix: true },
-                            )
-                          : "Never"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget({
-                              id: domain.id,
-                              hostname: domain.hostname,
-                            });
-                          }}
-                          disabled={pending}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            <TablePagination
-              page={pagination.page}
-              pageSize={pagination.pageSize}
-              totalPages={pagination.totalPages}
-              from={pagination.from}
-              to={pagination.to}
-              total={pagination.total}
-              onPageChange={pagination.setPage}
-              onPageSizeChange={pagination.setPageSize}
-            />
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={pagination.page}
+                pageSize={pagination.pageSize}
+                totalPages={pagination.totalPages}
+                from={pagination.from}
+                to={pagination.to}
+                total={pagination.total}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+            </>
           )}
         </CardContent>
       </Card>
