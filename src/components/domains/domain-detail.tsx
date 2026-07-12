@@ -5,9 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowLeft, ExternalLink, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import {
   addSocialSignal,
+  bulkImportSocialSignals,
   deleteSocialSignal,
   updateDomain,
 } from "@/lib/actions/domains";
@@ -26,6 +34,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -33,6 +49,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/ui/table-pagination";
 
 type DomainDetailData = {
   id: string;
@@ -101,8 +121,12 @@ export function DomainDetail({
   const [notes, setNotes] = useState(domain.notes ?? "");
   const [signalLabel, setSignalLabel] = useState("");
   const [signalUrl, setSignalUrl] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
 
   const metrics = firstMetrics(domain);
+  const anchors = usePagination(domain.domain_anchors, 20);
+  const backlinks = usePagination(domain.domain_backlinks, 20);
 
   function saveDomain(e: React.FormEvent) {
     e.preventDefault();
@@ -137,6 +161,25 @@ export function DomainDetail({
         setSignalUrl("");
         router.refresh();
       }
+    });
+  }
+
+  function importBulk(e: React.FormEvent) {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.set("domainId", domain.id);
+    fd.set("brandSlug", brand.slug);
+    fd.set("bulkText", bulkText);
+    startTransition(async () => {
+      const result = await bulkImportSocialSignals(fd);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`Imported ${result.imported} social signal${result.imported === 1 ? "" : "s"}`);
+      setBulkText("");
+      setBulkOpen(false);
+      router.refresh();
     });
   }
 
@@ -193,9 +236,7 @@ export function DomainDetail({
             <ArrowLeft className="size-3.5" />
             Back to domains
           </Link>
-          <h1 className="page-title">
-            {domain.hostname}
-          </h1>
+          <h1 className="page-title">{domain.hostname}</h1>
           <p className="page-subtitle">
             {domain.ahrefs_last_synced_at
               ? `Last synced ${formatDistanceToNow(new Date(domain.ahrefs_last_synced_at), { addSuffix: true })}`
@@ -266,14 +307,51 @@ export function DomainDetail({
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Social signals</CardTitle>
-            <CardDescription>
-              Import and track social profile / signal links for this domain.
-            </CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+            <div>
+              <CardTitle>Social signals</CardTitle>
+              <CardDescription>
+                Import and track social profile / signal links for this domain.
+              </CardDescription>
+            </div>
+            <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+              <DialogTrigger
+                render={
+                  <Button variant="outline" size="sm">
+                    <Upload className="size-3.5" />
+                    Bulk import
+                  </Button>
+                }
+              />
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Bulk import social signals</DialogTitle>
+                  <DialogDescription>
+                    One entry per line. Supported formats:{" "}
+                    <code className="text-xs">Label,URL</code>,{" "}
+                    <code className="text-xs">Label | URL</code>, or a bare URL.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={importBulk} className="space-y-4">
+                  <Textarea
+                    value={bulkText}
+                    onChange={(e) => setBulkText(e.target.value)}
+                    rows={10}
+                    placeholder={`Twitter,https://x.com/brand\nTelegram | https://t.me/brand\nhttps://facebook.com/brand`}
+                    required
+                  />
+                  <Button type="submit" className="w-full" disabled={pending}>
+                    Import links
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form onSubmit={addSignal} className="grid gap-3 sm:grid-cols-[1fr_1.4fr_auto]">
+            <form
+              onSubmit={addSignal}
+              className="grid gap-3 sm:grid-cols-[1fr_1.4fr_auto]"
+            >
               <Input
                 placeholder="Label (Twitter, TG…)"
                 value={signalLabel}
@@ -334,7 +412,9 @@ export function DomainDetail({
       <Card>
         <CardHeader>
           <CardTitle>Top anchors</CardTitle>
-          <CardDescription>Cached from Ahrefs (top 50).</CardDescription>
+          <CardDescription>
+            Cached from Ahrefs — {domain.domain_anchors.length} total, 20 per page.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {domain.domain_anchors.length === 0 ? (
@@ -342,30 +422,40 @@ export function DomainDetail({
               No anchors yet. Run Sync to pull Ahrefs data.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Anchor</TableHead>
-                  <TableHead>Backlinks</TableHead>
-                  <TableHead>Ref. domains</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {domain.domain_anchors.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="max-w-md truncate font-medium">
-                      {row.anchor}
-                    </TableCell>
-                    <TableCell className="table-numeric">
-                      {formatNumber(row.backlinks)}
-                    </TableCell>
-                    <TableCell className="table-numeric">
-                      {formatNumber(row.refdomains)}
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Anchor</TableHead>
+                    <TableHead>Backlinks</TableHead>
+                    <TableHead>Ref. domains</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {anchors.pageItems.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="max-w-md truncate font-medium">
+                        {row.anchor}
+                      </TableCell>
+                      <TableCell className="table-numeric">
+                        {formatNumber(row.backlinks)}
+                      </TableCell>
+                      <TableCell className="table-numeric">
+                        {formatNumber(row.refdomains)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={anchors.page}
+                totalPages={anchors.totalPages}
+                from={anchors.from}
+                to={anchors.to}
+                total={anchors.total}
+                onPageChange={anchors.setPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>
@@ -373,7 +463,9 @@ export function DomainDetail({
       <Card>
         <CardHeader>
           <CardTitle>Top backlinks</CardTitle>
-          <CardDescription>Cached from Ahrefs (top 50 by DR).</CardDescription>
+          <CardDescription>
+            Cached from Ahrefs — {domain.domain_backlinks.length} total, 20 per page.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {domain.domain_backlinks.length === 0 ? (
@@ -381,45 +473,55 @@ export function DomainDetail({
               No backlinks yet. Run Sync to pull Ahrefs data.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>From</TableHead>
-                  <TableHead>Anchor</TableHead>
-                  <TableHead>DR</TableHead>
-                  <TableHead>Follow</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {domain.domain_backlinks.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="max-w-xs truncate">
-                      <a
-                        href={row.url_from}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:underline"
-                      >
-                        {row.url_from}
-                      </a>
-                    </TableCell>
-                    <TableCell className="max-w-[180px] truncate">
-                      {row.anchor || "—"}
-                    </TableCell>
-                    <TableCell className="table-numeric">
-                      {formatNumber(row.domain_rating_source)}
-                    </TableCell>
-                    <TableCell>
-                      {row.is_dofollow == null
-                        ? "—"
-                        : row.is_dofollow
-                          ? "Dofollow"
-                          : "Nofollow"}
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>From</TableHead>
+                    <TableHead>Anchor</TableHead>
+                    <TableHead>DR</TableHead>
+                    <TableHead>Follow</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {backlinks.pageItems.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="max-w-xs truncate">
+                        <a
+                          href={row.url_from}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:underline"
+                        >
+                          {row.url_from}
+                        </a>
+                      </TableCell>
+                      <TableCell className="max-w-[180px] truncate">
+                        {row.anchor || "—"}
+                      </TableCell>
+                      <TableCell className="table-numeric">
+                        {formatNumber(row.domain_rating_source)}
+                      </TableCell>
+                      <TableCell>
+                        {row.is_dofollow == null
+                          ? "—"
+                          : row.is_dofollow
+                            ? "Dofollow"
+                            : "Nofollow"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={backlinks.page}
+                totalPages={backlinks.totalPages}
+                from={backlinks.from}
+                to={backlinks.to}
+                total={backlinks.total}
+                onPageChange={backlinks.setPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>

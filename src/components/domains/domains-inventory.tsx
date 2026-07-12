@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -238,15 +237,23 @@ export function DomainsInventory({
               <TableBody>
                 {domains.map((domain) => {
                   const metrics = metricsOf(domain);
+                  const href = `/${brand.slug}/domains/${domain.id}`;
                   return (
-                    <TableRow key={domain.id}>
+                    <TableRow
+                      key={domain.id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(href)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          router.push(href);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="link"
+                    >
                       <TableCell>
-                        <Link
-                          href={`/${brand.slug}/domains/${domain.id}`}
-                          className="font-medium hover:underline"
-                        >
-                          {domain.hostname}
-                        </Link>
+                        <span className="font-medium">{domain.hostname}</span>
                         {domain.ahrefs_sync_error && (
                           <p
                             className="mt-1 max-w-xs truncate text-xs text-destructive"
@@ -283,9 +290,10 @@ export function DomainsInventory({
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          onClick={() =>
-                            removeDomain(domain.id, domain.hostname)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeDomain(domain.id, domain.hostname);
+                          }}
                           disabled={pending}
                         >
                           <Trash2 className="size-3.5" />

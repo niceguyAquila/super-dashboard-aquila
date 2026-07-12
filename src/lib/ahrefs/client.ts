@@ -38,7 +38,14 @@ export type AhrefsDomainPayload = {
 };
 
 function getToken(): string {
-  const token = process.env.AHREFS_API_TOKEN?.trim();
+  const raw = process.env.AHREFS_API_TOKEN ?? "";
+  // Vercel/env mistakes often paste the token multiple times or wrap it in quotes.
+  const token = raw
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .split(/\s+/)
+    .filter(Boolean)[0];
+
   if (!token) {
     throw new Error(
       "AHREFS_API_TOKEN is not configured in Vercel environment variables",
