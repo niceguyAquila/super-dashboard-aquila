@@ -1,17 +1,27 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { Plus, RefreshCw, Trash2, Upload } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import {
   bulkImportDomains,
   createDomain,
   deleteDomain,
+  revalidateDomainsView,
 } from "@/lib/actions/domains";
 import type { Brand } from "@/lib/types";
 import { formatNumber } from "@/lib/utils/format";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,10 +71,80 @@ type DomainRow = {
   domain_social_signals: { id: string }[];
 };
 
+type SortKey =
+  | "hostname"
+  | "title"
+  | "dr"
+  | "backlinks"
+  | "refdomains"
+  | "social"
+  | "synced";
+
+type SortDir = "asc" | "desc";
+
 function metricsOf(row: DomainRow) {
   const m = row.domain_ahrefs_metrics;
   if (!m) return null;
   return Array.isArray(m) ? m[0] ?? null : m;
+}
+
+function sortValue(row: DomainRow, key: SortKey): string | number {
+  const metrics = metricsOf(row);
+  switch (key) {
+    case "hostname":
+      return row.hostname.toLowerCase();
+    case "title":
+      return (row.title ?? "").toLowerCase();
+    case "dr":
+      return Number(metrics?.domain_rating ?? -1);
+    case "backlinks":
+      return Number(metrics?.backlinks ?? -1);
+    case "refdomains":
+      return Number(metrics?.refdomains ?? -1);
+    case "social":
+      return row.domain_social_signals?.length ?? 0;
+    case "synced":
+      return row.ahrefs_last_synced_at
+        ? new Date(row.ahrefs_last_synced_at).getTime()
+        : 0;
+    default:
+      return "";
+  }
+}
+
+function SortableHead({
+  label,
+  sortKey,
+  activeKey,
+  dir,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  dir: SortDir;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const active = activeKey === sortKey;
+  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
+
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        className={cn(
+          "inline-flex items-center gap-1 uppercase tracking-wide transition-colors hover:text-foreground",
+          active ? "text-foreground" : "text-muted-foreground",
+        )}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        <Icon className="size-3.5 opacity-70" />
+      </button>
+    </TableHead>
+  );
 }
 
 export function DomainsInventory({
@@ -82,11 +162,43 @@ export function DomainsInventory({
   const [hostname, setHostname] = useState("");
   const [title, setTitle] = useState("");
   const [bulkText, setBulkText] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("hostname");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const bulkLineCount = bulkText
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#")).length;
+
+  const sortedDomains = useMemo(() => {
+    const rows = [...domains];
+    rows.sort((a, b) => {
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      let cmp = 0;
+      if (typeof av === "number" && typeof bv === "number") {
+        cmp = av - bv;
+      } else {
+        cmp = String(av).localeCompare(String(bv));
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return rows;
+  }, [domains, sortKey, sortDir]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "hostname" || key === "title" ? "asc" : "desc");
+    }
+  }
+
+  async function refreshInventory() {
+    await revalidateDomainsView(brand.slug);
+    router.refresh();
+  }
 
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -105,7 +217,7 @@ export function DomainsInventory({
       setHostname("");
       setTitle("");
       setOpen(false);
-      router.refresh();
+      await refreshInventory();
     });
   }
 
@@ -134,7 +246,7 @@ export function DomainsInventory({
       }
       setBulkText("");
       setBulkOpen(false);
-      router.refresh();
+      await refreshInventory();
     });
   }
 
@@ -158,11 +270,12 @@ export function DomainsInventory({
           `Sync failed for ${json.failed}/${json.synced}: ${firstError}`,
           { duration: 12000 },
         );
-        router.refresh();
       } else {
-        toast.success(`Synced ${json.synced} domain${json.synced === 1 ? "" : "s"}`);
-        router.refresh();
+        toast.success(
+          `Synced ${json.synced} domain${json.synced === 1 ? "" : "s"}`,
+        );
       }
+      await refreshInventory();
     } catch {
       toast.error("Sync request failed");
     } finally {
@@ -180,7 +293,7 @@ export function DomainsInventory({
       if (result.error) toast.error(result.error);
       else {
         toast.success("Domain deleted");
-        router.refresh();
+        await refreshInventory();
       }
     });
   }
@@ -189,9 +302,7 @@ export function DomainsInventory({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="page-title">
-            Domain inventory
-          </h1>
+          <h1 className="page-title">Domain inventory</h1>
           <p className="page-subtitle">
             Track titles, social signals, and Ahrefs metrics for {brand.name}.
           </p>
@@ -234,7 +345,9 @@ export function DomainsInventory({
                     value={bulkText}
                     onChange={(e) => setBulkText(e.target.value)}
                     className="field-sizing-fixed h-[min(50vh,360px)] max-h-[min(50vh,360px)] min-h-[160px] resize-none overflow-y-auto font-mono text-[0.8125rem] leading-relaxed"
-                    placeholder={`dzinetrip.com,ZENPLAY168\nexample.com\nanother-site.com | Main Title`}
+                    placeholder={
+                      "dzinetrip.com,ZENPLAY168\nexample.com\nanother-site.com | Main Title"
+                    }
                     required
                   />
                 </div>
@@ -253,7 +366,10 @@ export function DomainsInventory({
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={pending || bulkLineCount === 0}>
+                    <Button
+                      type="submit"
+                      disabled={pending || bulkLineCount === 0}
+                    >
                       {pending ? "Importing…" : `Import ${bulkLineCount || ""}`}
                     </Button>
                   </div>
@@ -307,7 +423,8 @@ export function DomainsInventory({
         <CardHeader>
           <CardTitle>Domains</CardTitle>
           <CardDescription>
-            {domains.length} domain{domains.length === 1 ? "" : "s"} in this brand
+            {domains.length} domain{domains.length === 1 ? "" : "s"} in this
+            brand · click a column header to sort
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -319,18 +436,60 @@ export function DomainsInventory({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>DR</TableHead>
-                  <TableHead>Backlinks</TableHead>
-                  <TableHead>Ref. domains</TableHead>
-                  <TableHead>Social</TableHead>
-                  <TableHead>Last synced</TableHead>
+                  <SortableHead
+                    label="Domain"
+                    sortKey="hostname"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableHead
+                    label="Title"
+                    sortKey="title"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableHead
+                    label="DR"
+                    sortKey="dr"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableHead
+                    label="Backlinks"
+                    sortKey="backlinks"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableHead
+                    label="Ref. domains"
+                    sortKey="refdomains"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableHead
+                    label="Social"
+                    sortKey="social"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableHead
+                    label="Last synced"
+                    sortKey="synced"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {domains.map((domain) => {
+                {sortedDomains.map((domain) => {
                   const metrics = metricsOf(domain);
                   const href = `/${brand.slug}/domains/${domain.id}`;
                   return (

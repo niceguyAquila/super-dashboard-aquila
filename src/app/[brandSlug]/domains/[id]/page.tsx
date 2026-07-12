@@ -5,6 +5,8 @@ import { getCurrentProfile } from "@/lib/auth/session";
 import { AppShell } from "@/components/layout/app-shell";
 import { DomainDetail } from "@/components/domains/domain-detail";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   params: Promise<{ brandSlug: string; id: string }>;
 };

@@ -17,6 +17,7 @@ import {
   addSocialSignal,
   bulkImportSocialSignals,
   deleteSocialSignal,
+  revalidateDomainsView,
   updateDomain,
 } from "@/lib/actions/domains";
 import type { Brand } from "@/lib/types";
@@ -213,11 +214,11 @@ export function DomainDetail({
         toast.error(json.results[0].error ?? "Sync failed", {
           duration: 12000,
         });
-        router.refresh();
       } else {
         toast.success("Ahrefs data refreshed");
-        router.refresh();
       }
+      await revalidateDomainsView(brand.slug, domain.id);
+      router.refresh();
     } catch {
       toast.error("Sync request failed");
     } finally {

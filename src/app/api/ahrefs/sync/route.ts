@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { syncDomains } from "@/lib/ahrefs/sync";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/admin";
 
 function isAuthorized(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
@@ -9,6 +11,47 @@ function isAuthorized(request: Request): boolean {
     return true;
   }
   return false;
+}
+
+async function revalidateSyncedPaths(options: {
+  brandId?: string;
+  domainId?: string;
+}) {
+  revalidatePath("/", "layout");
+
+  try {
+    const admin = createServiceClient();
+
+    if (options.domainId) {
+      const { data: domain } = await admin
+        .from("domains")
+        .select("id, brand_id, brands(slug)")
+        .eq("id", options.domainId)
+        .maybeSingle();
+
+      const brandSlug = (domain as { brands?: { slug?: string } } | null)?.brands
+        ?.slug;
+      if (brandSlug && domain) {
+        revalidatePath(`/${brandSlug}/domains`);
+        revalidatePath(`/${brandSlug}/domains/${domain.id}`);
+      }
+      return;
+    }
+
+    if (options.brandId) {
+      const { data: brand } = await admin
+        .from("brands")
+        .select("slug")
+        .eq("id", options.brandId)
+        .maybeSingle();
+      if (brand?.slug) {
+        revalidatePath(`/${brand.slug}/domains`);
+        revalidatePath(`/${brand.slug}`, "layout");
+      }
+    }
+  } catch (err) {
+    console.error("[ahrefs] revalidate paths failed:", err);
+  }
 }
 
 export async function POST(request: Request) {
@@ -40,6 +83,12 @@ export async function POST(request: Request) {
         failed.map((f) => ({ hostname: f.hostname, error: f.error })),
       );
     }
+
+    await revalidateSyncedPaths({
+      brandId: body.brandId,
+      domainId: body.domainId,
+    });
+
     return NextResponse.json({
       synced: results.length,
       failed: failed.length,
@@ -53,13 +102,13 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  // Vercel Cron uses GET by default
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const results = await syncDomains();
+    revalidatePath("/", "layout");
     return NextResponse.json({
       synced: results.length,
       failed: results.filter((r) => !r.ok).length,

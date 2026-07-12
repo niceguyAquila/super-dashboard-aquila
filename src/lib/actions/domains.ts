@@ -311,6 +311,15 @@ export async function getDomainsForBrand(brandId: string) {
   return data ?? [];
 }
 
+export async function revalidateDomainsView(brandSlug: string, domainId?: string) {
+  revalidatePath(`/${brandSlug}/domains`);
+  revalidatePath(`/${brandSlug}`, "layout");
+  if (domainId) {
+    revalidatePath(`/${brandSlug}/domains/${domainId}`);
+  }
+  return { ok: true };
+}
+
 export async function getDomainDetail(domainId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
