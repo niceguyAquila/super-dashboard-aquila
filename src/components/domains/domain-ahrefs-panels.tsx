@@ -24,6 +24,7 @@ import {
   usePagination,
 } from "@/components/ui/table-pagination";
 import { SortableHead, useSort } from "@/components/ui/sortable-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export type AhrefsMetrics = {
   domain_rating: number | null;
@@ -406,519 +407,527 @@ export function DomainAhrefsPanels({
 
       <Card>
         <CardHeader>
-          <CardTitle>Referring domains</CardTitle>
+          <CardTitle>Ahrefs reports</CardTitle>
           <CardDescription>
-            Cached from Ahrefs — {refdomains.length} total.
+            Cached sync data — switch tabs to inspect each report.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {refdomains.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No referring domains yet. Run Sync to pull Ahrefs data.
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHead
-                      label="Domain"
-                      sortKey="refdomain"
-                      activeKey={refdomainSortKey}
-                      dir={refdomainSortDir}
-                      onSort={toggleRefdomainSort}
-                    />
-                    <SortableHead
-                      label="DR"
-                      sortKey="dr"
-                      activeKey={refdomainSortKey}
-                      dir={refdomainSortDir}
-                      onSort={toggleRefdomainSort}
-                    />
-                    <SortableHead
-                      label="Links"
-                      sortKey="links"
-                      activeKey={refdomainSortKey}
-                      dir={refdomainSortDir}
-                      onSort={toggleRefdomainSort}
-                    />
-                    <SortableHead
-                      label="Dofollow"
-                      sortKey="dofollow"
-                      activeKey={refdomainSortKey}
-                      dir={refdomainSortDir}
-                      onSort={toggleRefdomainSort}
-                    />
-                    <SortableHead
-                      label="Traffic"
-                      sortKey="traffic"
-                      activeKey={refdomainSortKey}
-                      dir={refdomainSortDir}
-                      onSort={toggleRefdomainSort}
-                    />
-                    <SortableHead
-                      label="Spam"
-                      sortKey="spam"
-                      activeKey={refdomainSortKey}
-                      dir={refdomainSortDir}
-                      onSort={toggleRefdomainSort}
-                    />
-                    <TableHead>First seen</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {refdomainsPage.pageItems.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="max-w-[220px] truncate font-medium">
-                        {row.refdomain}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.domain_rating)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.links_to_target)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.dofollow_links)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.traffic_domain)}
-                      </TableCell>
-                      <TableCell>
-                        {row.is_spam ? (
-                          <Badge variant="destructive">Spam</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            {spamLabel(row.is_spam)}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {row.first_seen ?? "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                id="refdomains-page-size"
-                page={refdomainsPage.page}
-                pageSize={refdomainsPage.pageSize}
-                totalPages={refdomainsPage.totalPages}
-                from={refdomainsPage.from}
-                to={refdomainsPage.to}
-                total={refdomainsPage.total}
-                onPageChange={refdomainsPage.setPage}
-                onPageSizeChange={refdomainsPage.setPageSize}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
+          <Tabs defaultValue="refdomains" className="gap-4">
+            <TabsList
+              variant="line"
+              className="h-auto w-full flex-wrap justify-start gap-1"
+            >
+              <TabsTrigger value="refdomains" className="px-3">
+                Ref. domains
+                <span className="table-numeric text-muted-foreground">
+                  {refdomains.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="keywords" className="px-3">
+                Keywords
+                <span className="table-numeric text-muted-foreground">
+                  {organicKeywords.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="pages" className="px-3">
+                Top pages
+                <span className="table-numeric text-muted-foreground">
+                  {topPages.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="anchors" className="px-3">
+                Anchors
+                <span className="table-numeric text-muted-foreground">
+                  {anchors.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="backlinks" className="px-3">
+                Backlinks
+                <span className="table-numeric text-muted-foreground">
+                  {backlinks.length}
+                </span>
+              </TabsTrigger>
+            </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Organic keywords</CardTitle>
-          <CardDescription>
-            Cached from Ahrefs — {organicKeywords.length} total.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {organicKeywords.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No organic keywords yet. Run Sync to pull Ahrefs data.
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHead
-                      label="Keyword"
-                      sortKey="keyword"
-                      activeKey={keywordSortKey}
-                      dir={keywordSortDir}
-                      onSort={toggleKeywordSort}
-                    />
-                    <SortableHead
-                      label="Pos"
-                      sortKey="position"
-                      activeKey={keywordSortKey}
-                      dir={keywordSortDir}
-                      onSort={toggleKeywordSort}
-                    />
-                    <SortableHead
-                      label="Volume"
-                      sortKey="volume"
-                      activeKey={keywordSortKey}
-                      dir={keywordSortDir}
-                      onSort={toggleKeywordSort}
-                    />
-                    <SortableHead
-                      label="Traffic"
-                      sortKey="traffic"
-                      activeKey={keywordSortKey}
-                      dir={keywordSortDir}
-                      onSort={toggleKeywordSort}
-                    />
-                    <SortableHead
-                      label="KD"
-                      sortKey="difficulty"
-                      activeKey={keywordSortKey}
-                      dir={keywordSortDir}
-                      onSort={toggleKeywordSort}
-                    />
-                    <TableHead>URL</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {keywordsPage.pageItems.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="max-w-[220px] truncate font-medium">
-                        {row.keyword}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.best_position)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.volume)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.traffic)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.keyword_difficulty)}
-                      </TableCell>
-                      <TableCell className="max-w-[220px] truncate text-muted-foreground">
-                        {row.ranking_url ? (
-                          <LinkCell href={row.ranking_url} />
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                id="keywords-page-size"
-                page={keywordsPage.page}
-                pageSize={keywordsPage.pageSize}
-                totalPages={keywordsPage.totalPages}
-                from={keywordsPage.from}
-                to={keywordsPage.to}
-                total={keywordsPage.total}
-                onPageChange={keywordsPage.setPage}
-                onPageSizeChange={keywordsPage.setPageSize}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
+            <TabsContent value="refdomains">
+              {refdomains.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No referring domains yet. Run Sync to pull Ahrefs data.
+                </p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableHead
+                          label="Domain"
+                          sortKey="refdomain"
+                          activeKey={refdomainSortKey}
+                          dir={refdomainSortDir}
+                          onSort={toggleRefdomainSort}
+                        />
+                        <SortableHead
+                          label="DR"
+                          sortKey="dr"
+                          activeKey={refdomainSortKey}
+                          dir={refdomainSortDir}
+                          onSort={toggleRefdomainSort}
+                        />
+                        <SortableHead
+                          label="Links"
+                          sortKey="links"
+                          activeKey={refdomainSortKey}
+                          dir={refdomainSortDir}
+                          onSort={toggleRefdomainSort}
+                        />
+                        <SortableHead
+                          label="Dofollow"
+                          sortKey="dofollow"
+                          activeKey={refdomainSortKey}
+                          dir={refdomainSortDir}
+                          onSort={toggleRefdomainSort}
+                        />
+                        <SortableHead
+                          label="Traffic"
+                          sortKey="traffic"
+                          activeKey={refdomainSortKey}
+                          dir={refdomainSortDir}
+                          onSort={toggleRefdomainSort}
+                        />
+                        <SortableHead
+                          label="Spam"
+                          sortKey="spam"
+                          activeKey={refdomainSortKey}
+                          dir={refdomainSortDir}
+                          onSort={toggleRefdomainSort}
+                        />
+                        <TableHead>First seen</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {refdomainsPage.pageItems.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="max-w-[220px] truncate font-medium">
+                            {row.refdomain}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.domain_rating)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.links_to_target)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.dofollow_links)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.traffic_domain)}
+                          </TableCell>
+                          <TableCell>
+                            {row.is_spam ? (
+                              <Badge variant="destructive">Spam</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {spamLabel(row.is_spam)}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {row.first_seen ?? "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <TablePagination
+                    id="refdomains-page-size"
+                    page={refdomainsPage.page}
+                    pageSize={refdomainsPage.pageSize}
+                    totalPages={refdomainsPage.totalPages}
+                    from={refdomainsPage.from}
+                    to={refdomainsPage.to}
+                    total={refdomainsPage.total}
+                    onPageChange={refdomainsPage.setPage}
+                    onPageSizeChange={refdomainsPage.setPageSize}
+                  />
+                </>
+              )}
+            </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Top pages</CardTitle>
-          <CardDescription>
-            Cached from Ahrefs — {topPages.length} total.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {topPages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No top pages yet. Run Sync to pull Ahrefs data.
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHead
-                      label="URL"
-                      sortKey="url"
-                      activeKey={pageSortKey}
-                      dir={pageSortDir}
-                      onSort={togglePageSort}
-                    />
-                    <SortableHead
-                      label="Traffic"
-                      sortKey="traffic"
-                      activeKey={pageSortKey}
-                      dir={pageSortDir}
-                      onSort={togglePageSort}
-                    />
-                    <SortableHead
-                      label="Keywords"
-                      sortKey="keywords"
-                      activeKey={pageSortKey}
-                      dir={pageSortDir}
-                      onSort={togglePageSort}
-                    />
-                    <SortableHead
-                      label="Top keyword"
-                      sortKey="top_keyword"
-                      activeKey={pageSortKey}
-                      dir={pageSortDir}
-                      onSort={togglePageSort}
-                    />
-                    <SortableHead
-                      label="Ref. domains"
-                      sortKey="refdomains"
-                      activeKey={pageSortKey}
-                      dir={pageSortDir}
-                      onSort={togglePageSort}
-                    />
-                    <SortableHead
-                      label="UR"
-                      sortKey="ur"
-                      activeKey={pageSortKey}
-                      dir={pageSortDir}
-                      onSort={togglePageSort}
-                    />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pagesPage.pageItems.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="max-w-[280px] truncate font-medium">
-                        <LinkCell href={row.url} />
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.traffic)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.keywords)}
-                      </TableCell>
-                      <TableCell className="max-w-[180px] truncate">
-                        {row.top_keyword || "—"}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.referring_domains)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.url_rating)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                id="pages-page-size"
-                page={pagesPage.page}
-                pageSize={pagesPage.pageSize}
-                totalPages={pagesPage.totalPages}
-                from={pagesPage.from}
-                to={pagesPage.to}
-                total={pagesPage.total}
-                onPageChange={pagesPage.setPage}
-                onPageSizeChange={pagesPage.setPageSize}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
+            <TabsContent value="keywords">
+              {organicKeywords.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No organic keywords yet. Run Sync to pull Ahrefs data.
+                </p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableHead
+                          label="Keyword"
+                          sortKey="keyword"
+                          activeKey={keywordSortKey}
+                          dir={keywordSortDir}
+                          onSort={toggleKeywordSort}
+                        />
+                        <SortableHead
+                          label="Pos"
+                          sortKey="position"
+                          activeKey={keywordSortKey}
+                          dir={keywordSortDir}
+                          onSort={toggleKeywordSort}
+                        />
+                        <SortableHead
+                          label="Volume"
+                          sortKey="volume"
+                          activeKey={keywordSortKey}
+                          dir={keywordSortDir}
+                          onSort={toggleKeywordSort}
+                        />
+                        <SortableHead
+                          label="Traffic"
+                          sortKey="traffic"
+                          activeKey={keywordSortKey}
+                          dir={keywordSortDir}
+                          onSort={toggleKeywordSort}
+                        />
+                        <SortableHead
+                          label="KD"
+                          sortKey="difficulty"
+                          activeKey={keywordSortKey}
+                          dir={keywordSortDir}
+                          onSort={toggleKeywordSort}
+                        />
+                        <TableHead>URL</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {keywordsPage.pageItems.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="max-w-[220px] truncate font-medium">
+                            {row.keyword}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.best_position)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.volume)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.traffic)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.keyword_difficulty)}
+                          </TableCell>
+                          <TableCell className="max-w-[220px] truncate text-muted-foreground">
+                            {row.ranking_url ? (
+                              <LinkCell href={row.ranking_url} />
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <TablePagination
+                    id="keywords-page-size"
+                    page={keywordsPage.page}
+                    pageSize={keywordsPage.pageSize}
+                    totalPages={keywordsPage.totalPages}
+                    from={keywordsPage.from}
+                    to={keywordsPage.to}
+                    total={keywordsPage.total}
+                    onPageChange={keywordsPage.setPage}
+                    onPageSizeChange={keywordsPage.setPageSize}
+                  />
+                </>
+              )}
+            </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Top anchors</CardTitle>
-          <CardDescription>
-            Cached from Ahrefs — {anchors.length} total.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {anchors.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No anchors yet. Run Sync to pull Ahrefs data.
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHead
-                      label="Anchor"
-                      sortKey="anchor"
-                      activeKey={anchorSortKey}
-                      dir={anchorSortDir}
-                      onSort={toggleAnchorSort}
-                    />
-                    <SortableHead
-                      label="Backlinks"
-                      sortKey="backlinks"
-                      activeKey={anchorSortKey}
-                      dir={anchorSortDir}
-                      onSort={toggleAnchorSort}
-                    />
-                    <SortableHead
-                      label="Ref. domains"
-                      sortKey="refdomains"
-                      activeKey={anchorSortKey}
-                      dir={anchorSortDir}
-                      onSort={toggleAnchorSort}
-                    />
-                    <SortableHead
-                      label="First seen"
-                      sortKey="first_seen"
-                      activeKey={anchorSortKey}
-                      dir={anchorSortDir}
-                      onSort={toggleAnchorSort}
-                    />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {anchorsPage.pageItems.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="max-w-md truncate font-medium">
-                        {row.anchor}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.backlinks)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.refdomains)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {row.first_seen ?? "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                id="anchors-page-size"
-                page={anchorsPage.page}
-                pageSize={anchorsPage.pageSize}
-                totalPages={anchorsPage.totalPages}
-                from={anchorsPage.from}
-                to={anchorsPage.to}
-                total={anchorsPage.total}
-                onPageChange={anchorsPage.setPage}
-                onPageSizeChange={anchorsPage.setPageSize}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
+            <TabsContent value="pages">
+              {topPages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No top pages yet. Run Sync to pull Ahrefs data.
+                </p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableHead
+                          label="URL"
+                          sortKey="url"
+                          activeKey={pageSortKey}
+                          dir={pageSortDir}
+                          onSort={togglePageSort}
+                        />
+                        <SortableHead
+                          label="Traffic"
+                          sortKey="traffic"
+                          activeKey={pageSortKey}
+                          dir={pageSortDir}
+                          onSort={togglePageSort}
+                        />
+                        <SortableHead
+                          label="Keywords"
+                          sortKey="keywords"
+                          activeKey={pageSortKey}
+                          dir={pageSortDir}
+                          onSort={togglePageSort}
+                        />
+                        <SortableHead
+                          label="Top keyword"
+                          sortKey="top_keyword"
+                          activeKey={pageSortKey}
+                          dir={pageSortDir}
+                          onSort={togglePageSort}
+                        />
+                        <SortableHead
+                          label="Ref. domains"
+                          sortKey="refdomains"
+                          activeKey={pageSortKey}
+                          dir={pageSortDir}
+                          onSort={togglePageSort}
+                        />
+                        <SortableHead
+                          label="UR"
+                          sortKey="ur"
+                          activeKey={pageSortKey}
+                          dir={pageSortDir}
+                          onSort={togglePageSort}
+                        />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagesPage.pageItems.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="max-w-[280px] truncate font-medium">
+                            <LinkCell href={row.url} />
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.traffic)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.keywords)}
+                          </TableCell>
+                          <TableCell className="max-w-[180px] truncate">
+                            {row.top_keyword || "—"}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.referring_domains)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.url_rating)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <TablePagination
+                    id="pages-page-size"
+                    page={pagesPage.page}
+                    pageSize={pagesPage.pageSize}
+                    totalPages={pagesPage.totalPages}
+                    from={pagesPage.from}
+                    to={pagesPage.to}
+                    total={pagesPage.total}
+                    onPageChange={pagesPage.setPage}
+                    onPageSizeChange={pagesPage.setPageSize}
+                  />
+                </>
+              )}
+            </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Top backlinks</CardTitle>
-          <CardDescription>
-            Cached from Ahrefs — {backlinks.length} total.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {backlinks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No backlinks yet. Run Sync to pull Ahrefs data.
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHead
-                      label="From"
-                      sortKey="url_from"
-                      activeKey={backlinkSortKey}
-                      dir={backlinkSortDir}
-                      onSort={toggleBacklinkSort}
-                    />
-                    <SortableHead
-                      label="Anchor"
-                      sortKey="anchor"
-                      activeKey={backlinkSortKey}
-                      dir={backlinkSortDir}
-                      onSort={toggleBacklinkSort}
-                    />
-                    <SortableHead
-                      label="DR"
-                      sortKey="dr"
-                      activeKey={backlinkSortKey}
-                      dir={backlinkSortDir}
-                      onSort={toggleBacklinkSort}
-                    />
-                    <SortableHead
-                      label="Follow"
-                      sortKey="follow"
-                      activeKey={backlinkSortKey}
-                      dir={backlinkSortDir}
-                      onSort={toggleBacklinkSort}
-                    />
-                    <SortableHead
-                      label="Type"
-                      sortKey="type"
-                      activeKey={backlinkSortKey}
-                      dir={backlinkSortDir}
-                      onSort={toggleBacklinkSort}
-                    />
-                    <SortableHead
-                      label="Spam"
-                      sortKey="spam"
-                      activeKey={backlinkSortKey}
-                      dir={backlinkSortDir}
-                      onSort={toggleBacklinkSort}
-                    />
-                    <SortableHead
-                      label="Traffic"
-                      sortKey="traffic"
-                      activeKey={backlinkSortKey}
-                      dir={backlinkSortDir}
-                      onSort={toggleBacklinkSort}
-                    />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {backlinksPage.pageItems.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="max-w-[240px] truncate">
-                        <LinkCell href={row.url_from} />
-                      </TableCell>
-                      <TableCell className="max-w-[140px] truncate">
-                        {row.anchor || "—"}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.domain_rating_source)}
-                      </TableCell>
-                      <TableCell>
-                        {row.is_dofollow == null
-                          ? "—"
-                          : row.is_dofollow
-                            ? "Dofollow"
-                            : "Nofollow"}
-                      </TableCell>
-                      <TableCell className="capitalize text-muted-foreground">
-                        {row.link_type || "—"}
-                      </TableCell>
-                      <TableCell>
-                        {row.is_spam ? (
-                          <Badge variant="destructive">Spam</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            {spamLabel(row.is_spam)}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.traffic)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                id="backlinks-page-size"
-                page={backlinksPage.page}
-                pageSize={backlinksPage.pageSize}
-                totalPages={backlinksPage.totalPages}
-                from={backlinksPage.from}
-                to={backlinksPage.to}
-                total={backlinksPage.total}
-                onPageChange={backlinksPage.setPage}
-                onPageSizeChange={backlinksPage.setPageSize}
-              />
-            </>
-          )}
+            <TabsContent value="anchors">
+              {anchors.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No anchors yet. Run Sync to pull Ahrefs data.
+                </p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableHead
+                          label="Anchor"
+                          sortKey="anchor"
+                          activeKey={anchorSortKey}
+                          dir={anchorSortDir}
+                          onSort={toggleAnchorSort}
+                        />
+                        <SortableHead
+                          label="Backlinks"
+                          sortKey="backlinks"
+                          activeKey={anchorSortKey}
+                          dir={anchorSortDir}
+                          onSort={toggleAnchorSort}
+                        />
+                        <SortableHead
+                          label="Ref. domains"
+                          sortKey="refdomains"
+                          activeKey={anchorSortKey}
+                          dir={anchorSortDir}
+                          onSort={toggleAnchorSort}
+                        />
+                        <SortableHead
+                          label="First seen"
+                          sortKey="first_seen"
+                          activeKey={anchorSortKey}
+                          dir={anchorSortDir}
+                          onSort={toggleAnchorSort}
+                        />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {anchorsPage.pageItems.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="max-w-md truncate font-medium">
+                            {row.anchor}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.backlinks)}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.refdomains)}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {row.first_seen ?? "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <TablePagination
+                    id="anchors-page-size"
+                    page={anchorsPage.page}
+                    pageSize={anchorsPage.pageSize}
+                    totalPages={anchorsPage.totalPages}
+                    from={anchorsPage.from}
+                    to={anchorsPage.to}
+                    total={anchorsPage.total}
+                    onPageChange={anchorsPage.setPage}
+                    onPageSizeChange={anchorsPage.setPageSize}
+                  />
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="backlinks">
+              {backlinks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No backlinks yet. Run Sync to pull Ahrefs data.
+                </p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableHead
+                          label="From"
+                          sortKey="url_from"
+                          activeKey={backlinkSortKey}
+                          dir={backlinkSortDir}
+                          onSort={toggleBacklinkSort}
+                        />
+                        <SortableHead
+                          label="Anchor"
+                          sortKey="anchor"
+                          activeKey={backlinkSortKey}
+                          dir={backlinkSortDir}
+                          onSort={toggleBacklinkSort}
+                        />
+                        <SortableHead
+                          label="DR"
+                          sortKey="dr"
+                          activeKey={backlinkSortKey}
+                          dir={backlinkSortDir}
+                          onSort={toggleBacklinkSort}
+                        />
+                        <SortableHead
+                          label="Follow"
+                          sortKey="follow"
+                          activeKey={backlinkSortKey}
+                          dir={backlinkSortDir}
+                          onSort={toggleBacklinkSort}
+                        />
+                        <SortableHead
+                          label="Type"
+                          sortKey="type"
+                          activeKey={backlinkSortKey}
+                          dir={backlinkSortDir}
+                          onSort={toggleBacklinkSort}
+                        />
+                        <SortableHead
+                          label="Spam"
+                          sortKey="spam"
+                          activeKey={backlinkSortKey}
+                          dir={backlinkSortDir}
+                          onSort={toggleBacklinkSort}
+                        />
+                        <SortableHead
+                          label="Traffic"
+                          sortKey="traffic"
+                          activeKey={backlinkSortKey}
+                          dir={backlinkSortDir}
+                          onSort={toggleBacklinkSort}
+                        />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {backlinksPage.pageItems.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="max-w-[240px] truncate">
+                            <LinkCell href={row.url_from} />
+                          </TableCell>
+                          <TableCell className="max-w-[140px] truncate">
+                            {row.anchor || "—"}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.domain_rating_source)}
+                          </TableCell>
+                          <TableCell>
+                            {row.is_dofollow == null
+                              ? "—"
+                              : row.is_dofollow
+                                ? "Dofollow"
+                                : "Nofollow"}
+                          </TableCell>
+                          <TableCell className="capitalize text-muted-foreground">
+                            {row.link_type || "—"}
+                          </TableCell>
+                          <TableCell>
+                            {row.is_spam ? (
+                              <Badge variant="destructive">Spam</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {spamLabel(row.is_spam)}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="table-numeric">
+                            {formatNumber(row.traffic)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <TablePagination
+                    id="backlinks-page-size"
+                    page={backlinksPage.page}
+                    pageSize={backlinksPage.pageSize}
+                    totalPages={backlinksPage.totalPages}
+                    from={backlinksPage.from}
+                    to={backlinksPage.to}
+                    total={backlinksPage.total}
+                    onPageChange={backlinksPage.setPage}
+                    onPageSizeChange={backlinksPage.setPageSize}
+                  />
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
