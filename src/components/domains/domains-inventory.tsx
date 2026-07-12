@@ -83,6 +83,11 @@ export function DomainsInventory({
   const [title, setTitle] = useState("");
   const [bulkText, setBulkText] = useState("");
 
+  const bulkLineCount = bulkText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#")).length;
+
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
     const fd = new FormData();
@@ -209,8 +214,8 @@ export function DomainsInventory({
                 </Button>
               }
             />
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
+            <DialogContent className="flex max-h-[min(90vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+              <DialogHeader className="shrink-0 space-y-2 border-b px-4 py-4 pr-12">
                 <DialogTitle>Bulk import domains</DialogTitle>
                 <DialogDescription>
                   One domain per line. Formats:{" "}
@@ -220,17 +225,39 @@ export function DomainsInventory({
                   domains are skipped.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={onBulkImport} className="space-y-4">
-                <Textarea
-                  value={bulkText}
-                  onChange={(e) => setBulkText(e.target.value)}
-                  rows={12}
-                  placeholder={`dzinetrip.com,ZENPLAY168\nexample.com\nanother-site.com | Main Title`}
-                  required
-                />
-                <Button type="submit" className="w-full" disabled={pending}>
-                  Import domains
-                </Button>
+              <form
+                onSubmit={onBulkImport}
+                className="flex min-h-0 flex-1 flex-col"
+              >
+                <div className="min-h-0 flex-1 overflow-hidden px-4 py-4">
+                  <Textarea
+                    value={bulkText}
+                    onChange={(e) => setBulkText(e.target.value)}
+                    className="field-sizing-fixed h-[min(50vh,360px)] max-h-[min(50vh,360px)] min-h-[160px] resize-none overflow-y-auto font-mono text-[0.8125rem] leading-relaxed"
+                    placeholder={`dzinetrip.com,ZENPLAY168\nexample.com\nanother-site.com | Main Title`}
+                    required
+                  />
+                </div>
+                <div className="flex shrink-0 flex-col gap-3 border-t bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {bulkLineCount} line{bulkLineCount === 1 ? "" : "s"} ready
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setBulkText("");
+                        setBulkOpen(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={pending || bulkLineCount === 0}>
+                      {pending ? "Importing…" : `Import ${bulkLineCount || ""}`}
+                    </Button>
+                  </div>
+                </div>
               </form>
             </DialogContent>
           </Dialog>

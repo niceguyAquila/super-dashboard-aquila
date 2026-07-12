@@ -323,8 +323,8 @@ export function DomainDetail({
                   </Button>
                 }
               />
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
+              <DialogContent className="flex max-h-[min(90vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+                <DialogHeader className="shrink-0 space-y-2 border-b px-4 py-4 pr-12">
                   <DialogTitle>Bulk import social signals</DialogTitle>
                   <DialogDescription>
                     One entry per line. Supported formats:{" "}
@@ -332,17 +332,52 @@ export function DomainDetail({
                     <code className="text-xs">Label | URL</code>, or a bare URL.
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={importBulk} className="space-y-4">
-                  <Textarea
-                    value={bulkText}
-                    onChange={(e) => setBulkText(e.target.value)}
-                    rows={10}
-                    placeholder={`Twitter,https://x.com/brand\nTelegram | https://t.me/brand\nhttps://facebook.com/brand`}
-                    required
-                  />
-                  <Button type="submit" className="w-full" disabled={pending}>
-                    Import links
-                  </Button>
+                <form
+                  onSubmit={importBulk}
+                  className="flex min-h-0 flex-1 flex-col"
+                >
+                  <div className="min-h-0 flex-1 overflow-hidden px-4 py-4">
+                    <Textarea
+                      value={bulkText}
+                      onChange={(e) => setBulkText(e.target.value)}
+                      className="field-sizing-fixed h-[min(50vh,360px)] max-h-[min(50vh,360px)] min-h-[160px] resize-none overflow-y-auto font-mono text-[0.8125rem] leading-relaxed"
+                      placeholder={`Twitter,https://x.com/brand\nTelegram | https://t.me/brand\nhttps://facebook.com/brand`}
+                      required
+                    />
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-3 border-t bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {
+                        bulkText
+                          .split(/\r?\n/)
+                          .map((l) => l.trim())
+                          .filter((l) => l && !l.startsWith("#")).length
+                      }{" "}
+                      line
+                      {bulkText
+                        .split(/\r?\n/)
+                        .map((l) => l.trim())
+                        .filter((l) => l && !l.startsWith("#")).length === 1
+                        ? ""
+                        : "s"}{" "}
+                      ready
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setBulkText("");
+                          setBulkOpen(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={pending}>
+                        {pending ? "Importing…" : "Import links"}
+                      </Button>
+                    </div>
+                  </div>
                 </form>
               </DialogContent>
             </Dialog>
