@@ -30,6 +30,12 @@ export function formatCurrency(value: number | null | undefined): string {
   }).format(value);
 }
 
+/** Ahrefs traffic value / cost fields are returned in USD cents. */
+export function formatAhrefsCents(cents: number | null | undefined): string {
+  if (cents == null || Number.isNaN(cents)) return "—";
+  return formatCurrency(cents / 100);
+}
+
 export function computeCpr(spend: number, registrations: number): number | null {
   if (!registrations) return null;
   return spend / registrations;

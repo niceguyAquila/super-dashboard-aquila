@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -21,7 +21,6 @@ import {
   updateDomain,
 } from "@/lib/actions/domains";
 import type { Brand } from "@/lib/types";
-import { formatNumber } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +54,16 @@ import {
   TablePagination,
   usePagination,
 } from "@/components/ui/table-pagination";
+import { SortableHead, useSort } from "@/components/ui/sortable-table";
+import {
+  DomainAhrefsPanels,
+  type AhrefsMetrics,
+  type AnchorRow,
+  type BacklinkRow,
+  type OrganicKeywordRow,
+  type RefdomainRow,
+  type TopPageRow,
+} from "@/components/domains/domain-ahrefs-panels";
 
 type DomainDetailData = {
   id: string;
@@ -63,50 +72,32 @@ type DomainDetailData = {
   notes: string | null;
   ahrefs_last_synced_at: string | null;
   ahrefs_sync_error: string | null;
-  domain_ahrefs_metrics:
-    | {
-        domain_rating: number | null;
-        url_rating: number | null;
-        backlinks: number | null;
-        refdomains: number | null;
-        organic_keywords: number | null;
-        organic_traffic: number | null;
-        fetched_at: string;
-      }
-    | {
-        domain_rating: number | null;
-        url_rating: number | null;
-        backlinks: number | null;
-        refdomains: number | null;
-        organic_keywords: number | null;
-        organic_traffic: number | null;
-        fetched_at: string;
-      }[]
-    | null;
+  domain_ahrefs_metrics: AhrefsMetrics | AhrefsMetrics[] | null;
   domain_social_signals: {
     id: string;
     label: string;
     url: string;
   }[];
-  domain_anchors: {
-    id: string;
-    anchor: string;
-    backlinks: number | null;
-    refdomains: number | null;
-  }[];
-  domain_backlinks: {
-    id: string;
-    url_from: string;
-    anchor: string | null;
-    domain_rating_source: number | null;
-    is_dofollow: boolean | null;
-  }[];
+  domain_anchors: AnchorRow[];
+  domain_backlinks: BacklinkRow[];
+  domain_refdomains: RefdomainRow[];
+  domain_organic_keywords: OrganicKeywordRow[];
+  domain_top_pages: TopPageRow[];
 };
 
-function firstMetrics(domain: DomainDetailData) {
+type SignalSortKey = "label" | "url";
+
+function firstMetrics(domain: DomainDetailData): AhrefsMetrics | null {
   const m = domain.domain_ahrefs_metrics;
   if (!m) return null;
   return Array.isArray(m) ? m[0] ?? null : m;
+}
+
+function signalSortValue(
+  row: DomainDetailData["domain_social_signals"][number],
+  key: SignalSortKey,
+) {
+  return key === "label" ? row.label.toLowerCase() : row.url.toLowerCase();
 }
 
 export function DomainDetail({
@@ -131,8 +122,22 @@ export function DomainDetail({
   } | null>(null);
 
   const metrics = firstMetrics(domain);
-  const anchors = usePagination(domain.domain_anchors);
-  const backlinks = usePagination(domain.domain_backlinks);
+  const getSignalSortValue = useCallback(signalSortValue, []);
+  const {
+    sorted: sortedSignals,
+    sortKey: signalSortKey,
+    sortDir: signalSortDir,
+    toggleSort: toggleSignalSort,
+  } = useSort<
+    DomainDetailData["domain_social_signals"][number],
+    SignalSortKey
+  >(domain.domain_social_signals, "label", "asc", getSignalSortValue);
+  const signals = usePagination(sortedSignals);
+
+  function toggleSignalSortAndReset(key: SignalSortKey) {
+    toggleSignalSort(key);
+    signals.setPage(1);
+  }
 
   function saveDomain(e: React.FormEvent) {
     e.preventDefault();
@@ -182,7 +187,9 @@ export function DomainDetail({
         toast.error(result.error);
         return;
       }
-      toast.success(`Imported ${result.imported} social signal${result.imported === 1 ? "" : "s"}`);
+      toast.success(
+        `Imported ${result.imported} social signal${result.imported === 1 ? "" : "s"}`,
+      );
       setBulkText("");
       setBulkOpen(false);
       router.refresh();
@@ -260,25 +267,6 @@ export function DomainDetail({
           <RefreshCw className={`size-3.5 ${syncing ? "animate-spin" : ""}`} />
           Sync now
         </Button>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Domain Rating", value: formatNumber(metrics?.domain_rating) },
-          { label: "Backlinks", value: formatNumber(metrics?.backlinks) },
-          { label: "Referring domains", value: formatNumber(metrics?.refdomains) },
-          {
-            label: "Organic keywords",
-            value: formatNumber(metrics?.organic_keywords),
-          },
-        ].map((item) => (
-          <Card key={item.label}>
-            <CardHeader className="pb-2">
-              <CardDescription>{item.label}</CardDescription>
-              <CardTitle className="metric-value">{item.value}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -418,165 +406,88 @@ export function DomainDetail({
                 No social signal links yet.
               </p>
             ) : (
-              <ul className="space-y-2">
-                {domain.domain_social_signals.map((signal) => (
-                  <li
-                    key={signal.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border/70 px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <Badge variant="secondary">{signal.label}</Badge>
-                      <a
-                        href={signal.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-1 flex items-center gap-1 truncate text-sm text-emerald-800 hover:underline"
-                      >
-                        {signal.url}
-                        <ExternalLink className="size-3 shrink-0" />
-                      </a>
-                    </div>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      onClick={() =>
-                        setDeleteSignal({
-                          id: signal.id,
-                          label: signal.label,
-                        })
-                      }
-                      disabled={pending}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableHead
+                        label="Label"
+                        sortKey="label"
+                        activeKey={signalSortKey}
+                        dir={signalSortDir}
+                        onSort={toggleSignalSortAndReset}
+                      />
+                      <SortableHead
+                        label="URL"
+                        sortKey="url"
+                        activeKey={signalSortKey}
+                        dir={signalSortDir}
+                        onSort={toggleSignalSortAndReset}
+                      />
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {signals.pageItems.map((signal) => (
+                      <TableRow key={signal.id}>
+                        <TableCell>
+                          <Badge variant="secondary">{signal.label}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          <a
+                            href={signal.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-emerald-800 hover:underline"
+                          >
+                            <span className="truncate">{signal.url}</span>
+                            <ExternalLink className="size-3 shrink-0" />
+                          </a>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setDeleteSignal({
+                                id: signal.id,
+                                label: signal.label,
+                              })
+                            }
+                            disabled={pending}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  id="signals-page-size"
+                  page={signals.page}
+                  pageSize={signals.pageSize}
+                  totalPages={signals.totalPages}
+                  from={signals.from}
+                  to={signals.to}
+                  total={signals.total}
+                  onPageChange={signals.setPage}
+                  onPageSizeChange={signals.setPageSize}
+                />
+              </>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Top anchors</CardTitle>
-          <CardDescription>
-            Cached from Ahrefs — {domain.domain_anchors.length} total.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {domain.domain_anchors.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No anchors yet. Run Sync to pull Ahrefs data.
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Anchor</TableHead>
-                    <TableHead>Backlinks</TableHead>
-                    <TableHead>Ref. domains</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {anchors.pageItems.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="max-w-md truncate font-medium">
-                        {row.anchor}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.backlinks)}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.refdomains)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                page={anchors.page}
-                pageSize={anchors.pageSize}
-                totalPages={anchors.totalPages}
-                from={anchors.from}
-                to={anchors.to}
-                total={anchors.total}
-                onPageChange={anchors.setPage}
-                onPageSizeChange={anchors.setPageSize}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Top backlinks</CardTitle>
-          <CardDescription>
-            Cached from Ahrefs — {domain.domain_backlinks.length} total.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {domain.domain_backlinks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No backlinks yet. Run Sync to pull Ahrefs data.
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>From</TableHead>
-                    <TableHead>Anchor</TableHead>
-                    <TableHead>DR</TableHead>
-                    <TableHead>Follow</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {backlinks.pageItems.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="max-w-xs truncate">
-                        <a
-                          href={row.url_from}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:underline"
-                        >
-                          {row.url_from}
-                        </a>
-                      </TableCell>
-                      <TableCell className="max-w-[180px] truncate">
-                        {row.anchor || "—"}
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(row.domain_rating_source)}
-                      </TableCell>
-                      <TableCell>
-                        {row.is_dofollow == null
-                          ? "—"
-                          : row.is_dofollow
-                            ? "Dofollow"
-                            : "Nofollow"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                page={backlinks.page}
-                pageSize={backlinks.pageSize}
-                totalPages={backlinks.totalPages}
-                from={backlinks.from}
-                to={backlinks.to}
-                total={backlinks.total}
-                onPageChange={backlinks.setPage}
-                onPageSizeChange={backlinks.setPageSize}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <DomainAhrefsPanels
+        metrics={metrics}
+        anchors={domain.domain_anchors ?? []}
+        backlinks={domain.domain_backlinks ?? []}
+        refdomains={domain.domain_refdomains ?? []}
+        organicKeywords={domain.domain_organic_keywords ?? []}
+        topPages={domain.domain_top_pages ?? []}
+      />
 
       <ConfirmDialog
         open={!!deleteSignal}

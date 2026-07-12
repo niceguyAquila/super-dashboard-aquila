@@ -55,6 +55,7 @@ export function TablePagination({
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = PAGE_SIZE_OPTIONS,
+  id = "page-size",
 }: {
   page: number;
   pageSize: number;
@@ -65,6 +66,7 @@ export function TablePagination({
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   pageSizeOptions?: readonly number[];
+  id?: string;
 }) {
   if (total <= 0) return null;
 
@@ -75,11 +77,11 @@ export function TablePagination({
           Showing {from}–{to} of {total}
         </p>
         <div className="flex items-center gap-2">
-          <Label htmlFor="page-size" className="text-sm text-muted-foreground">
+          <Label htmlFor={id} className="text-sm text-muted-foreground">
             Rows
           </Label>
           <select
-            id="page-size"
+            id={id}
             className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -49,6 +49,38 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/ui/table-pagination";
+import { SortableHead, useSort } from "@/components/ui/sortable-table";
+
+type AdsSortKey =
+  | "date"
+  | "spend"
+  | "regs"
+  | "deposits"
+  | "cpr"
+  | "notes";
+
+function adsSortValue(entry: AdEntry, key: AdsSortKey): string | number {
+  switch (key) {
+    case "date":
+      return entry.entry_date;
+    case "spend":
+      return Number(entry.spend);
+    case "regs":
+      return Number(entry.registrations);
+    case "deposits":
+      return Number(entry.deposits);
+    case "cpr": {
+      const regs = Number(entry.registrations);
+      return regs > 0 ? Number(entry.spend) / regs : -1;
+    }
+    case "notes":
+      return (entry.notes ?? "").toLowerCase();
+  }
+}
 
 function toInputDate(d = new Date()) {
   return d.toISOString().slice(0, 10);
@@ -94,6 +126,22 @@ export function AdsDashboard({
       cpr: computeCpr(spendSum, regs),
     };
   }, [entries]);
+
+  const getAdsSortValue = useCallback(adsSortValue, []);
+  const {
+    sorted: sortedEntries,
+    sortKey,
+    sortDir,
+    toggleSort: toggleAdsSort,
+  } = useSort<AdEntry, AdsSortKey>(entries, "date", "desc", getAdsSortValue, {
+    defaultDirForKey: (key) => (key === "notes" ? "asc" : "desc"),
+  });
+  const pagination = usePagination(sortedEntries);
+
+  function toggleSort(key: AdsSortKey) {
+    toggleAdsSort(key);
+    pagination.setPage(1);
+  }
 
   const chartData = useMemo(
     () =>
@@ -370,53 +418,102 @@ export function AdsDashboard({
               No ADS entries yet. Add a daily entry to start tracking CPR.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Spend</TableHead>
-                  <TableHead>Regs</TableHead>
-                  <TableHead>Deposits</TableHead>
-                  <TableHead>CPR</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-medium">
-                      {entry.entry_date}
-                    </TableCell>
-                    <TableCell className="table-numeric">
-                      {formatCurrency(Number(entry.spend))}
-                    </TableCell>
-                    <TableCell className="table-numeric">
-                      {formatNumber(entry.registrations)}
-                    </TableCell>
-                    <TableCell className="table-numeric">
-                      {formatNumber(entry.deposits)}
-                    </TableCell>
-                    <TableCell className="table-numeric">
-                      {formatCpr(Number(entry.spend), entry.registrations)}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                      {entry.notes || "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        onClick={() => setDeleteId(entry.id)}
-                        disabled={pending}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableHead
+                      label="Date"
+                      sortKey="date"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Spend"
+                      sortKey="spend"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Regs"
+                      sortKey="regs"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Deposits"
+                      sortKey="deposits"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="CPR"
+                      sortKey="cpr"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Notes"
+                      sortKey="notes"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {pagination.pageItems.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="font-medium">
+                        {entry.entry_date}
+                      </TableCell>
+                      <TableCell className="table-numeric">
+                        {formatCurrency(Number(entry.spend))}
+                      </TableCell>
+                      <TableCell className="table-numeric">
+                        {formatNumber(entry.registrations)}
+                      </TableCell>
+                      <TableCell className="table-numeric">
+                        {formatNumber(entry.deposits)}
+                      </TableCell>
+                      <TableCell className="table-numeric">
+                        {formatCpr(Number(entry.spend), entry.registrations)}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                        {entry.notes || "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          onClick={() => setDeleteId(entry.id)}
+                          disabled={pending}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                id="ads-page-size"
+                page={pagination.page}
+                pageSize={pagination.pageSize}
+                totalPages={pagination.totalPages}
+                from={pagination.from}
+                to={pagination.to}
+                total={pagination.total}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+            </>
           )}
         </CardContent>
       </Card>

@@ -1,18 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Plus,
-  RefreshCw,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 import {
   bulkImportDomains,
   createDomain,
@@ -21,7 +13,6 @@ import {
 } from "@/lib/actions/domains";
 import type { Brand } from "@/lib/types";
 import { formatNumber } from "@/lib/utils/format";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +45,7 @@ import {
   TablePagination,
   usePagination,
 } from "@/components/ui/table-pagination";
+import { SortableHead, useSort } from "@/components/ui/sortable-table";
 
 type DomainRow = {
   id: string;
@@ -85,15 +77,13 @@ type SortKey =
   | "social"
   | "synced";
 
-type SortDir = "asc" | "desc";
-
 function metricsOf(row: DomainRow) {
   const m = row.domain_ahrefs_metrics;
   if (!m) return null;
   return Array.isArray(m) ? m[0] ?? null : m;
 }
 
-function sortValue(row: DomainRow, key: SortKey): string | number {
+function domainSortValue(row: DomainRow, key: SortKey): string | number {
   const metrics = metricsOf(row);
   switch (key) {
     case "hostname":
@@ -117,41 +107,6 @@ function sortValue(row: DomainRow, key: SortKey): string | number {
   }
 }
 
-function SortableHead({
-  label,
-  sortKey,
-  activeKey,
-  dir,
-  onSort,
-  className,
-}: {
-  label: string;
-  sortKey: SortKey;
-  activeKey: SortKey;
-  dir: SortDir;
-  onSort: (key: SortKey) => void;
-  className?: string;
-}) {
-  const active = activeKey === sortKey;
-  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
-
-  return (
-    <TableHead className={className}>
-      <button
-        type="button"
-        className={cn(
-          "inline-flex items-center gap-1 uppercase tracking-wide transition-colors hover:text-foreground",
-          active ? "text-foreground" : "text-muted-foreground",
-        )}
-        onClick={() => onSort(sortKey)}
-      >
-        {label}
-        <Icon className="size-3.5 opacity-70" />
-      </button>
-    </TableHead>
-  );
-}
-
 export function DomainsInventory({
   brand,
   domains,
@@ -167,8 +122,6 @@ export function DomainsInventory({
   const [hostname, setHostname] = useState("");
   const [title, setTitle] = useState("");
   const [bulkText, setBulkText] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("hostname");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     hostname: string;
@@ -179,31 +132,21 @@ export function DomainsInventory({
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#")).length;
 
-  const sortedDomains = useMemo(() => {
-    const rows = [...domains];
-    rows.sort((a, b) => {
-      const av = sortValue(a, sortKey);
-      const bv = sortValue(b, sortKey);
-      let cmp = 0;
-      if (typeof av === "number" && typeof bv === "number") {
-        cmp = av - bv;
-      } else {
-        cmp = String(av).localeCompare(String(bv));
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-    return rows;
-  }, [domains, sortKey, sortDir]);
+  const getDomainSortValue = useCallback(domainSortValue, []);
+  const {
+    sorted: sortedDomains,
+    sortKey,
+    sortDir,
+    toggleSort: toggleDomainSort,
+  } = useSort<DomainRow, SortKey>(domains, "hostname", "asc", getDomainSortValue, {
+    defaultDirForKey: (key) =>
+      key === "hostname" || key === "title" ? "asc" : "desc",
+  });
 
   const pagination = usePagination(sortedDomains);
 
   function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir(key === "hostname" || key === "title" ? "asc" : "desc");
-    }
+    toggleDomainSort(key);
     pagination.setPage(1);
   }
 

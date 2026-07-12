@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -29,6 +29,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/ui/table-pagination";
+import { SortableHead, useSort } from "@/components/ui/sortable-table";
+
+type UserSortKey = "username" | "role" | "created";
+
+function userSortValue(user: Profile, key: UserSortKey): string | number {
+  switch (key) {
+    case "username":
+      return user.username.toLowerCase();
+    case "role":
+      return user.role;
+    case "created":
+      return new Date(user.created_at).getTime();
+  }
+}
 
 export function UsersManager({
   users,
@@ -42,6 +60,22 @@ export function UsersManager({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"user" | "super_admin">("user");
+
+  const getUserSortValue = useCallback(userSortValue, []);
+  const {
+    sorted,
+    sortKey,
+    sortDir,
+    toggleSort: toggleUserSort,
+  } = useSort<Profile, UserSortKey>(users, "username", "asc", getUserSortValue, {
+    defaultDirForKey: (key) => (key === "created" ? "desc" : "asc"),
+  });
+  const pagination = usePagination(sorted);
+
+  function toggleSort(key: UserSortKey) {
+    toggleUserSort(key);
+    pagination.setPage(1);
+  }
 
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -131,27 +165,66 @@ export function UsersManager({
       <Card>
         <CardHeader>
           <CardTitle>Accounts</CardTitle>
+          <CardDescription>
+            {users.length} account{users.length === 1 ? "" : "s"} · click a
+            column header to sort
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <UserRow
-                  key={user.id}
-                  user={user}
-                  isSelf={user.id === currentUserId}
-                />
-              ))}
-            </TableBody>
-          </Table>
+          {users.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No users yet.</p>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableHead
+                      label="Username"
+                      sortKey="username"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Role"
+                      sortKey="role"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Created"
+                      sortKey="created"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagination.pageItems.map((user) => (
+                    <UserRow
+                      key={user.id}
+                      user={user}
+                      isSelf={user.id === currentUserId}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                id="users-page-size"
+                page={pagination.page}
+                pageSize={pagination.pageSize}
+                totalPages={pagination.totalPages}
+                from={pagination.from}
+                to={pagination.to}
+                total={pagination.total}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

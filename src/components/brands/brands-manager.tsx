@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createBrand, deleteBrand, updateBrand } from "@/lib/actions/brands";
@@ -24,11 +24,36 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/ui/table-pagination";
+import { SortableHead, useSort } from "@/components/ui/sortable-table";
+
+type BrandSortKey = "name" | "slug";
+
+function brandSortValue(brand: Brand, key: BrandSortKey): string {
+  return key === "name" ? brand.name.toLowerCase() : brand.slug.toLowerCase();
+}
 
 export function BrandsManager({ brands }: { brands: Brand[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [name, setName] = useState("");
+
+  const getBrandSortValue = useCallback(brandSortValue, []);
+  const {
+    sorted,
+    sortKey,
+    sortDir,
+    toggleSort: toggleBrandSort,
+  } = useSort<Brand, BrandSortKey>(brands, "name", "asc", getBrandSortValue);
+  const pagination = usePagination(sorted);
+
+  function toggleSort(key: BrandSortKey) {
+    toggleBrandSort(key);
+    pagination.setPage(1);
+  }
 
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -64,7 +89,10 @@ export function BrandsManager({ brands }: { brands: Brand[] }) {
           <CardDescription>Create a new brand workspace.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onCreate} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <form
+            onSubmit={onCreate}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
             <div className="flex-1 space-y-2">
               <Label htmlFor="brand-name">Name</Label>
               <Input
@@ -85,6 +113,10 @@ export function BrandsManager({ brands }: { brands: Brand[] }) {
       <Card>
         <CardHeader>
           <CardTitle>Your brands</CardTitle>
+          <CardDescription>
+            {brands.length} brand{brands.length === 1 ? "" : "s"} · click a
+            column header to sort
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {brands.length === 0 ? (
@@ -92,20 +124,45 @@ export function BrandsManager({ brands }: { brands: Brand[] }) {
               No brands yet. Create one to get started.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {brands.map((brand) => (
-                  <BrandRow key={brand.id} brand={brand} />
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableHead
+                      label="Name"
+                      sortKey="name"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Slug"
+                      sortKey="slug"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagination.pageItems.map((brand) => (
+                    <BrandRow key={brand.id} brand={brand} />
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                id="brands-page-size"
+                page={pagination.page}
+                pageSize={pagination.pageSize}
+                totalPages={pagination.totalPages}
+                from={pagination.from}
+                to={pagination.to}
+                total={pagination.total}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+            </>
           )}
         </CardContent>
       </Card>

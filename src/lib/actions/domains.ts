@@ -330,7 +330,10 @@ export async function getDomainDetail(domainId: string) {
       domain_ahrefs_metrics (*),
       domain_social_signals (*),
       domain_anchors (*),
-      domain_backlinks (*)
+      domain_backlinks (*),
+      domain_refdomains (*),
+      domain_organic_keywords (*),
+      domain_top_pages (*)
     `,
     )
     .eq("id", domainId)

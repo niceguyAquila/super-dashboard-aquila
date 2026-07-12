@@ -8,6 +8,18 @@ export type SyncResult = {
   error?: string;
 };
 
+async function replaceRows(
+  table: string,
+  domainId: string,
+  rows: Record<string, unknown>[],
+) {
+  const supabase = createServiceClient();
+  await supabase.from(table).delete().eq("domain_id", domainId);
+  if (!rows.length) return;
+  const { error } = await supabase.from(table).insert(rows as never);
+  if (error) throw new Error(`${table}: ${error.message}`);
+}
+
 export async function syncDomainById(domainId: string): Promise<SyncResult> {
   const supabase = createServiceClient();
 
@@ -39,46 +51,95 @@ export async function syncDomainById(domainId: string): Promise<SyncResult> {
         backlinks: payload.metrics.backlinks,
         refdomains: payload.metrics.refdomains,
         organic_keywords: payload.metrics.organic_keywords,
+        organic_keywords_top3: payload.metrics.organic_keywords_top3,
         organic_traffic: payload.metrics.organic_traffic,
+        organic_cost: payload.metrics.organic_cost,
+        paid_keywords: payload.metrics.paid_keywords,
+        paid_traffic: payload.metrics.paid_traffic,
+        paid_pages: payload.metrics.paid_pages,
+        paid_cost: payload.metrics.paid_cost,
         fetched_at: now,
       });
 
     if (metricsError) throw new Error(metricsError.message);
 
-    await supabase.from("domain_anchors").delete().eq("domain_id", domain.id);
-    if (payload.anchors.length) {
-      const { error: anchorsError } = await supabase.from("domain_anchors").insert(
-        payload.anchors.map((row) => ({
-          domain_id: domain.id,
-          anchor: row.anchor,
-          backlinks: row.backlinks,
-          refdomains: row.refdomains,
-          first_seen: row.first_seen,
-          last_seen: row.last_seen,
-        })),
-      );
-      if (anchorsError) throw new Error(anchorsError.message);
-    }
+    await replaceRows(
+      "domain_anchors",
+      domain.id,
+      payload.anchors.map((row) => ({
+        domain_id: domain.id,
+        anchor: row.anchor,
+        backlinks: row.backlinks,
+        refdomains: row.refdomains,
+        first_seen: row.first_seen,
+        last_seen: row.last_seen,
+      })),
+    );
 
-    await supabase.from("domain_backlinks").delete().eq("domain_id", domain.id);
-    if (payload.backlinks.length) {
-      const { error: backlinksError } = await supabase
-        .from("domain_backlinks")
-        .insert(
-          payload.backlinks.map((row) => ({
-            domain_id: domain.id,
-            url_from: row.url_from,
-            url_to: row.url_to,
-            anchor: row.anchor,
-            domain_rating_source: row.domain_rating_source,
-            url_rating_source: row.url_rating_source,
-            is_dofollow: row.is_dofollow,
-            first_seen: row.first_seen,
-            last_seen: row.last_seen,
-          })),
-        );
-      if (backlinksError) throw new Error(backlinksError.message);
-    }
+    await replaceRows(
+      "domain_backlinks",
+      domain.id,
+      payload.backlinks.map((row) => ({
+        domain_id: domain.id,
+        url_from: row.url_from,
+        url_to: row.url_to,
+        anchor: row.anchor,
+        domain_rating_source: row.domain_rating_source,
+        url_rating_source: row.url_rating_source,
+        is_dofollow: row.is_dofollow,
+        is_spam: row.is_spam,
+        link_type: row.link_type,
+        traffic: row.traffic,
+        first_seen: row.first_seen,
+        last_seen: row.last_seen,
+      })),
+    );
+
+    await replaceRows(
+      "domain_refdomains",
+      domain.id,
+      payload.refdomains.map((row) => ({
+        domain_id: domain.id,
+        refdomain: row.refdomain,
+        domain_rating: row.domain_rating,
+        links_to_target: row.links_to_target,
+        dofollow_links: row.dofollow_links,
+        traffic_domain: row.traffic_domain,
+        is_spam: row.is_spam,
+        first_seen: row.first_seen,
+        last_seen: row.last_seen,
+      })),
+    );
+
+    await replaceRows(
+      "domain_organic_keywords",
+      domain.id,
+      payload.organicKeywords.map((row) => ({
+        domain_id: domain.id,
+        keyword: row.keyword,
+        best_position: row.best_position,
+        volume: row.volume,
+        traffic: row.traffic,
+        keyword_difficulty: row.keyword_difficulty,
+        ranking_url: row.ranking_url,
+      })),
+    );
+
+    await replaceRows(
+      "domain_top_pages",
+      domain.id,
+      payload.topPages.map((row) => ({
+        domain_id: domain.id,
+        url: row.url,
+        traffic: row.traffic,
+        keywords: row.keywords,
+        top_keyword: row.top_keyword,
+        top_keyword_volume: row.top_keyword_volume,
+        referring_domains: row.referring_domains,
+        url_rating: row.url_rating,
+        traffic_value: row.traffic_value,
+      })),
+    );
 
     await supabase
       .from("domains")
@@ -129,7 +190,6 @@ export async function syncDomains(options?: {
   const results: SyncResult[] = [];
   for (const domain of domains ?? []) {
     results.push(await syncDomainById(domain.id));
-    // Small delay to be gentle on Ahrefs rate limits
     await new Promise((r) => setTimeout(r, 400));
   }
   return results;
