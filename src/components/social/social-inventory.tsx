@@ -98,6 +98,32 @@ function formatRelative(iso: string) {
   return formatDistanceToNow(new Date(iso), { addSuffix: true });
 }
 
+function toHref(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function ExternalLinkCell({ value }: { value: string }) {
+  const href = toHref(value);
+  if (!href) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex max-w-full items-center gap-1 text-emerald-800 hover:underline"
+    >
+      <span className="truncate">{value.trim()}</span>
+      <ExternalLink className="size-3 shrink-0" />
+    </a>
+  );
+}
+
 export function SocialInventory({
   brand,
   signals,
@@ -444,18 +470,10 @@ export function SocialInventory({
                         <Badge variant="secondary">{signal.label}</Badge>
                       </TableCell>
                       <TableCell className="max-w-[180px] truncate">
-                        {signal.social_links || "—"}
+                        <ExternalLinkCell value={signal.social_links ?? ""} />
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
-                        <a
-                          href={signal.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-emerald-800 hover:underline"
-                        >
-                          <span className="truncate">{signal.url}</span>
-                          <ExternalLink className="size-3 shrink-0" />
-                        </a>
+                        <ExternalLinkCell value={signal.url} />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {formatRelative(signalTouchedAt(signal))}
