@@ -125,8 +125,8 @@ export function DomainDetail({
   const [bulkText, setBulkText] = useState("");
 
   const metrics = firstMetrics(domain);
-  const anchors = usePagination(domain.domain_anchors, 20);
-  const backlinks = usePagination(domain.domain_backlinks, 20);
+  const anchors = usePagination(domain.domain_anchors);
+  const backlinks = usePagination(domain.domain_backlinks);
 
   function saveDomain(e: React.FormEvent) {
     e.preventDefault();
@@ -413,7 +413,7 @@ export function DomainDetail({
         <CardHeader>
           <CardTitle>Top anchors</CardTitle>
           <CardDescription>
-            Cached from Ahrefs — {domain.domain_anchors.length} total, 20 per page.
+            Cached from Ahrefs — {domain.domain_anchors.length} total.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -449,11 +449,13 @@ export function DomainDetail({
               </Table>
               <TablePagination
                 page={anchors.page}
+                pageSize={anchors.pageSize}
                 totalPages={anchors.totalPages}
                 from={anchors.from}
                 to={anchors.to}
                 total={anchors.total}
                 onPageChange={anchors.setPage}
+                onPageSizeChange={anchors.setPageSize}
               />
             </>
           )}
@@ -464,7 +466,7 @@ export function DomainDetail({
         <CardHeader>
           <CardTitle>Top backlinks</CardTitle>
           <CardDescription>
-            Cached from Ahrefs — {domain.domain_backlinks.length} total, 20 per page.
+            Cached from Ahrefs — {domain.domain_backlinks.length} total.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -515,11 +517,13 @@ export function DomainDetail({
               </Table>
               <TablePagination
                 page={backlinks.page}
+                pageSize={backlinks.pageSize}
                 totalPages={backlinks.totalPages}
                 from={backlinks.from}
                 to={backlinks.to}
                 total={backlinks.total}
                 onPageChange={backlinks.setPage}
+                onPageSizeChange={backlinks.setPageSize}
               />
             </>
           )}
