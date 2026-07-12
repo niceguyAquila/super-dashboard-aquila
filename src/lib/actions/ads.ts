@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function upsertAdEntry(formData: FormData) {
   const brandId = String(formData.get("brandId") ?? "");
   const brandSlug = String(formData.get("brandSlug") ?? "");
+  const platformId = String(formData.get("platformId") ?? "");
   const entryDate = String(formData.get("entryDate") ?? "");
   const spend = Number(formData.get("spend") ?? 0);
   const registrations = Number(formData.get("registrations") ?? 0);
@@ -13,16 +14,28 @@ export async function upsertAdEntry(formData: FormData) {
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const id = String(formData.get("id") ?? "");
 
-  if (!brandId || !entryDate) {
-    return { error: "Brand and date are required" };
+  if (!brandId || !entryDate || !platformId) {
+    return { error: "Brand, platform, and date are required" };
   }
 
   const supabase = await createClient();
+
+  const { data: platform, error: platformError } = await supabase
+    .from("ad_platforms")
+    .select("id, brand_id, is_active")
+    .eq("id", platformId)
+    .maybeSingle();
+
+  if (platformError) return { error: platformError.message };
+  if (!platform || platform.brand_id !== brandId) {
+    return { error: "Platform not found for this brand" };
+  }
 
   if (id) {
     const { error } = await supabase
       .from("ad_entries")
       .update({
+        platform_id: platformId,
         entry_date: entryDate,
         spend,
         registrations,
@@ -32,16 +45,20 @@ export async function upsertAdEntry(formData: FormData) {
       .eq("id", id);
     if (error) return { error: error.message };
   } else {
+    if (!platform.is_active) {
+      return { error: "Cannot add entries for an inactive platform" };
+    }
     const { error } = await supabase.from("ad_entries").upsert(
       {
         brand_id: brandId,
+        platform_id: platformId,
         entry_date: entryDate,
         spend,
         registrations,
         deposits,
         notes,
       },
-      { onConflict: "brand_id,entry_date" },
+      { onConflict: "platform_id,entry_date" },
     );
     if (error) return { error: error.message };
   }
@@ -71,7 +88,7 @@ export async function getAdEntries(
   const supabase = await createClient();
   let query = supabase
     .from("ad_entries")
-    .select("*")
+    .select("*, ad_platforms(name, is_active)")
     .eq("brand_id", brandId)
     .order("entry_date", { ascending: false });
 

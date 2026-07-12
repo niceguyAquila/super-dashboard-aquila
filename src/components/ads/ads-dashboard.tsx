@@ -15,13 +15,14 @@ import {
 } from "recharts";
 import { Plus, Trash2 } from "lucide-react";
 import { deleteAdEntry, upsertAdEntry } from "@/lib/actions/ads";
-import type { AdEntry, Brand } from "@/lib/types";
+import type { AdEntry, AdPlatform, Brand } from "@/lib/types";
 import {
   computeCpr,
   formatCurrency,
   formatCpr,
   formatNumber,
 } from "@/lib/utils/format";
+import { AdPlatformsManager } from "@/components/ads/ad-platforms-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,16 +58,23 @@ import { SortableHead, useSort } from "@/components/ui/sortable-table";
 
 type AdsSortKey =
   | "date"
+  | "platform"
   | "spend"
   | "regs"
   | "deposits"
   | "cpr"
   | "notes";
 
+function platformName(entry: AdEntry) {
+  return entry.ad_platforms?.name ?? "";
+}
+
 function adsSortValue(entry: AdEntry, key: AdsSortKey): string | number {
   switch (key) {
     case "date":
       return entry.entry_date;
+    case "platform":
+      return platformName(entry).toLowerCase();
     case "spend":
       return Number(entry.spend);
     case "regs":
@@ -92,13 +100,18 @@ function defaultFrom() {
   return toInputDate(d);
 }
 
+const selectClassName =
+  "flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
 export function AdsDashboard({
   brand,
+  platforms,
   entries,
   initialFrom,
   initialTo,
 }: {
   brand: Brand;
+  platforms: AdPlatform[];
   entries: AdEntry[];
   initialFrom?: string;
   initialTo?: string;
@@ -108,6 +121,13 @@ export function AdsDashboard({
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(initialFrom ?? defaultFrom());
   const [to, setTo] = useState(initialTo ?? toInputDate());
+  const activePlatforms = useMemo(
+    () => platforms.filter((p) => p.is_active),
+    [platforms],
+  );
+  const [platformId, setPlatformId] = useState(
+    () => activePlatforms[0]?.id ?? "",
+  );
   const [entryDate, setEntryDate] = useState(toInputDate());
   const [spend, setSpend] = useState("0");
   const [registrations, setRegistrations] = useState("0");
@@ -134,7 +154,8 @@ export function AdsDashboard({
     sortDir,
     toggleSort: toggleAdsSort,
   } = useSort<AdEntry, AdsSortKey>(entries, "date", "desc", getAdsSortValue, {
-    defaultDirForKey: (key) => (key === "notes" ? "asc" : "desc"),
+    defaultDirForKey: (key) =>
+      key === "notes" || key === "platform" ? "asc" : "desc",
   });
   const pagination = usePagination(sortedEntries);
 
@@ -143,18 +164,25 @@ export function AdsDashboard({
     pagination.setPage(1);
   }
 
-  const chartData = useMemo(
-    () =>
-      [...entries]
-        .sort((a, b) => a.entry_date.localeCompare(b.entry_date))
-        .map((e) => ({
-          date: e.entry_date,
-          spend: Number(e.spend),
-          registrations: Number(e.registrations),
-          deposits: Number(e.deposits),
-        })),
-    [entries],
-  );
+  const chartData = useMemo(() => {
+    const byDate = new Map<
+      string,
+      { date: string; spend: number; registrations: number; deposits: number }
+    >();
+    for (const e of entries) {
+      const existing = byDate.get(e.entry_date) ?? {
+        date: e.entry_date,
+        spend: 0,
+        registrations: 0,
+        deposits: 0,
+      };
+      existing.spend += Number(e.spend);
+      existing.registrations += Number(e.registrations);
+      existing.deposits += Number(e.deposits);
+      byDate.set(e.entry_date, existing);
+    }
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }, [entries]);
 
   function applyFilters(e: React.FormEvent) {
     e.preventDefault();
@@ -164,11 +192,26 @@ export function AdsDashboard({
     router.push(`/${brand.slug}/ads?${params.toString()}`);
   }
 
+  function onOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) {
+      const first = activePlatforms[0]?.id ?? "";
+      setPlatformId((current) =>
+        activePlatforms.some((p) => p.id === current) ? current : first,
+      );
+    }
+  }
+
   function onSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!platformId) {
+      toast.error("Add an active platform first");
+      return;
+    }
     const fd = new FormData();
     fd.set("brandId", brand.id);
     fd.set("brandSlug", brand.slug);
+    fd.set("platformId", platformId);
     fd.set("entryDate", entryDate);
     fd.set("spend", spend);
     fd.set("registrations", registrations);
@@ -202,21 +245,22 @@ export function AdsDashboard({
     });
   }
 
+  const canAddEntry = activePlatforms.length > 0;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="page-title">
-            ADS performance
-          </h1>
+          <h1 className="page-title">ADS performance</h1>
           <p className="page-subtitle">
-            Manual spend, registrations, deposits, and CPR for {brand.name}.
+            Manual spend, registrations, deposits, and CPR per platform for{" "}
+            {brand.name}.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogTrigger
             render={
-              <Button>
+              <Button disabled={!canAddEntry}>
                 <Plus className="size-3.5" />
                 Add entry
               </Button>
@@ -226,75 +270,99 @@ export function AdsDashboard({
             <DialogHeader>
               <DialogTitle>Add / update ADS entry</DialogTitle>
             </DialogHeader>
-            <form onSubmit={onSave} className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="entryDate">Date</Label>
-                <Input
-                  id="entryDate"
-                  type="date"
-                  value={entryDate}
-                  onChange={(e) => setEntryDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
+            {canAddEntry ? (
+              <form onSubmit={onSave} className="space-y-3">
                 <div className="space-y-2">
-                  <Label htmlFor="spend">Spend</Label>
+                  <Label htmlFor="platform">Platform</Label>
+                  <select
+                    id="platform"
+                    className={selectClassName}
+                    value={platformId}
+                    onChange={(e) => setPlatformId(e.target.value)}
+                    required
+                  >
+                    {activePlatforms.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="entryDate">Date</Label>
                   <Input
-                    id="spend"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={spend}
-                    onChange={(e) => setSpend(e.target.value)}
+                    id="entryDate"
+                    type="date"
+                    value={entryDate}
+                    onChange={(e) => setEntryDate(e.target.value)}
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="regs">Regs</Label>
-                  <Input
-                    id="regs"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={registrations}
-                    onChange={(e) => setRegistrations(e.target.value)}
-                    required
-                  />
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="spend">Spend</Label>
+                    <Input
+                      id="spend"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={spend}
+                      onChange={(e) => setSpend(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regs">Regs</Label>
+                    <Input
+                      id="regs"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={registrations}
+                      onChange={(e) => setRegistrations(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="deps">Deposits</Label>
+                    <Input
+                      id="deps"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={deposits}
+                      onChange={(e) => setDeposits(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="deps">Deposits</Label>
-                  <Input
-                    id="deps"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={deposits}
-                    onChange={(e) => setDeposits(e.target.value)}
-                    required
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                />
-              </div>
+                <p className="text-sm text-muted-foreground">
+                  CPR preview:{" "}
+                  {formatCpr(Number(spend), Number(registrations))}
+                </p>
+                <Button type="submit" className="w-full" disabled={pending}>
+                  Save entry
+                </Button>
+              </form>
+            ) : (
               <p className="text-sm text-muted-foreground">
-                CPR preview:{" "}
-                {formatCpr(Number(spend), Number(registrations))}
+                Add an active platform first to log spend, regs, and deposits.
               </p>
-              <Button type="submit" className="w-full" disabled={pending}>
-                Save entry
-              </Button>
-            </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
+
+      <AdPlatformsManager brand={brand} platforms={platforms} />
 
       <Card>
         <CardContent className="pt-6">
@@ -365,7 +433,9 @@ export function AdsDashboard({
       <Card>
         <CardHeader>
           <CardTitle>Trend</CardTitle>
-          <CardDescription>Spend vs registrations over the selected range.</CardDescription>
+          <CardDescription>
+            Spend vs registrations over the selected range (all platforms).
+          </CardDescription>
         </CardHeader>
         <CardContent className="h-72">
           {chartData.length === 0 ? (
@@ -378,7 +448,11 @@ export function AdsDashboard({
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                 <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 12 }}
+                />
                 <Tooltip />
                 <Legend />
                 <Line
@@ -415,7 +489,8 @@ export function AdsDashboard({
         <CardContent>
           {entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No ADS entries yet. Add a daily entry to start tracking CPR.
+              No ADS entries yet. Add a daily entry per platform to start
+              tracking CPR.
             </p>
           ) : (
             <>
@@ -425,6 +500,13 @@ export function AdsDashboard({
                     <SortableHead
                       label="Date"
                       sortKey="date"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Platform"
+                      sortKey="platform"
                       activeKey={sortKey}
                       dir={sortDir}
                       onSort={toggleSort}
@@ -472,6 +554,9 @@ export function AdsDashboard({
                     <TableRow key={entry.id}>
                       <TableCell className="font-medium">
                         {entry.entry_date}
+                      </TableCell>
+                      <TableCell>
+                        {platformName(entry) || "—"}
                       </TableCell>
                       <TableCell className="table-numeric">
                         {formatCurrency(Number(entry.spend))}
@@ -524,7 +609,7 @@ export function AdsDashboard({
           if (!open) setDeleteId(null);
         }}
         title="Delete ADS entry?"
-        description="This will permanently remove this daily performance row."
+        description="This will permanently remove this platform’s daily performance row."
         pending={pending}
         onConfirm={remove}
       />

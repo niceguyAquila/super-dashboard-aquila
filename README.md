@@ -14,6 +14,8 @@ Brand-scoped dashboard for **domain inventory** (Ahrefs sync + social signals) a
 1. Create a Supabase project and run:
    - [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql)
    - [`supabase/migrations/002_profiles_auth.sql`](supabase/migrations/002_profiles_auth.sql)
+   - [`supabase/migrations/003_ahrefs_detail_expansion.sql`](supabase/migrations/003_ahrefs_detail_expansion.sql)
+   - [`supabase/migrations/004_ad_platforms.sql`](supabase/migrations/004_ad_platforms.sql)
 2. Copy [`.env.example`](.env.example) to `.env.local` and fill in values (service role key is required for user creation).
 3. In Supabase Auth → Providers, enable **Email** password sign-in. Disable public sign-ups in Auth settings if available.
 4. Install and run:
@@ -48,7 +50,11 @@ Sync caches metrics, top 50 anchors, and top 50 backlinks per domain to limit AP
 | `/settings/users` | Super admin: create / reset / delete users |
 | `/[brand]/domains` | Domain inventory |
 | `/[brand]/domains/[id]` | Title, social signals, Ahrefs data |
-| `/[brand]/ads` | ADS metrics + CPR |
+| `/[brand]/ads` | ADS metrics + CPR (per ad platform) |
+
+## ADS platforms
+
+Each brand manages its own ad platforms (e.g. Propeller Ads, Rich Ads) on the ADS page. Only **active** platforms appear when adding entries. Spend, registrations, and deposits are logged **per platform per day**. Dashboard totals and the trend chart aggregate across platforms for the selected range.
 
 ## CPR
 

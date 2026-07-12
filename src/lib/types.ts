@@ -70,15 +70,25 @@ export type DomainBacklink = {
   created_at: string;
 };
 
+export type AdPlatform = {
+  id: string;
+  brand_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+};
+
 export type AdEntry = {
   id: string;
   brand_id: string;
+  platform_id: string;
   entry_date: string;
   spend: number;
   registrations: number;
   deposits: number;
   notes: string | null;
   created_at: string;
+  ad_platforms?: Pick<AdPlatform, "name" | "is_active"> | null;
 };
 
 export type DomainWithMetrics = Domain & {

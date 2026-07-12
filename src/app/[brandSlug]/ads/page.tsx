@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getBrandBySlug } from "@/lib/actions/brands";
 import { getAdEntries } from "@/lib/actions/ads";
+import { getAdPlatforms } from "@/lib/actions/ad-platforms";
 import { AdsDashboard } from "@/components/ads/ads-dashboard";
 
 type PageProps = {
@@ -14,11 +15,15 @@ export default async function AdsPage({ params, searchParams }: PageProps) {
   const brand = await getBrandBySlug(brandSlug);
   if (!brand) notFound();
 
-  const entries = await getAdEntries(brand.id, from, to);
+  const [platforms, entries] = await Promise.all([
+    getAdPlatforms(brand.id),
+    getAdEntries(brand.id, from, to),
+  ]);
 
   return (
     <AdsDashboard
       brand={brand}
+      platforms={platforms}
       entries={entries}
       initialFrom={from}
       initialTo={to}
