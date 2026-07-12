@@ -26,10 +26,10 @@ export default async function HomePage() {
     <AppShell brands={brands} activeBrand={null} profile={profile}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="page-title">
             Choose a brand
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-subtitle">
             Open a brand workspace or create a new one.
           </p>
         </div>

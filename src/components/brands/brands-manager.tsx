@@ -51,8 +51,8 @@ export function BrandsManager({ brands }: { brands: Brand[] }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Brands</h1>
-        <p className="mt-1 text-muted-foreground">
+        <h1 className="page-title">Brands</h1>
+        <p className="page-subtitle">
           Each brand has its own domain inventory and ADS dashboard.
         </p>
       </div>

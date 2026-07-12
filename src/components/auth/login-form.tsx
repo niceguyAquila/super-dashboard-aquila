@@ -87,7 +87,7 @@ export function LoginForm({ needsSetup }: LoginFormProps) {
     return (
       <Card className="w-full max-w-md border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">
+          <CardTitle className="text-2xl font-semibold tracking-tight">
             Initial setup
           </CardTitle>
           <CardDescription>
@@ -137,7 +137,7 @@ export function LoginForm({ needsSetup }: LoginFormProps) {
   return (
     <Card className="w-full max-w-md border-border/60 shadow-sm">
       <CardHeader>
-        <CardTitle className="text-2xl tracking-tight">Brand Work</CardTitle>
+        <CardTitle className="text-2xl font-semibold tracking-tight">Brand Work</CardTitle>
         <CardDescription>
           Sign in with the username and password provided by your admin.
         </CardDescription>

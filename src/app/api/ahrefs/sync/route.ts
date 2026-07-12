@@ -34,6 +34,12 @@ export async function POST(request: Request) {
       domainId: body.domainId,
     });
     const failed = results.filter((r) => !r.ok);
+    if (failed.length) {
+      console.error(
+        "[ahrefs] sync completed with failures:",
+        failed.map((f) => ({ hostname: f.hostname, error: f.error })),
+      );
+    }
     return NextResponse.json({
       synced: results.length,
       failed: failed.length,
@@ -41,6 +47,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sync failed";
+    console.error("[ahrefs] sync route error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -38,15 +38,24 @@ export type AhrefsDomainPayload = {
 };
 
 function getToken(): string {
-  const token = process.env.AHREFS_API_TOKEN;
+  const token = process.env.AHREFS_API_TOKEN?.trim();
   if (!token) {
-    throw new Error("AHREFS_API_TOKEN is not configured");
+    throw new Error(
+      "AHREFS_API_TOKEN is not configured in Vercel environment variables",
+    );
   }
   return token;
 }
 
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+/** Ahrefs often has no snapshot for "today" — try recent dates. */
+function candidateDates(): string[] {
+  const dates: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
 }
 
 async function ahrefsGet<T>(
@@ -70,59 +79,66 @@ async function ahrefsGet<T>(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Ahrefs ${path} failed (${res.status}): ${body.slice(0, 400)}`);
+    throw new Error(
+      `Ahrefs ${path} failed (${res.status}): ${body.slice(0, 500)}`,
+    );
   }
 
   return res.json() as Promise<T>;
 }
 
-type OverviewResponse = {
-  metrics?: {
-    domain_rating?: number;
-    url_rating?: number;
-    org_keywords?: number;
-    org_traffic?: number;
-  };
-};
-
-type BacklinksStatsResponse = {
-  metrics?: {
-    live?: number;
-    live_refdomains?: number;
-  };
-};
+/** Retry date-based endpoints across recent days until one succeeds. */
+async function ahrefsGetWithDateFallback<T>(
+  path: string,
+  params: Record<string, string | number | undefined>,
+): Promise<T> {
+  let lastError: Error | null = null;
+  for (const date of candidateDates()) {
+    try {
+      return await ahrefsGet<T>(path, { ...params, date });
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      // Try older date if Ahrefs has no data for this day
+      if (
+        lastError.message.includes("(400)") ||
+        lastError.message.includes("(404)")
+      ) {
+        continue;
+      }
+      throw lastError;
+    }
+  }
+  throw lastError ?? new Error(`Ahrefs ${path} failed for all candidate dates`);
+}
 
 async function fetchMetrics(target: string): Promise<AhrefsMetricsResult> {
-  const date = todayIsoDate();
+  const base = { target, mode: "subdomains" as const };
 
-  const overviewPromise = ahrefsGet<OverviewResponse>("/overview", {
-    target,
-    date,
-    mode: "domain",
-    select: "domain_rating,url_rating,org_keywords,org_traffic",
-  }).catch((): OverviewResponse => ({ metrics: undefined }));
-
-  const backlinksStatsPromise = ahrefsGet<BacklinksStatsResponse>(
-    "/backlinks-stats",
-    {
-      target,
-      date,
-      mode: "domain",
-    },
-  );
-
-  const [overview, backlinksStats] = await Promise.all([
-    overviewPromise,
-    backlinksStatsPromise,
+  const [domainRating, backlinksStats, organic] = await Promise.all([
+    ahrefsGetWithDateFallback<{
+      domain_rating?: { domain_rating?: number };
+    }>("/domain-rating", base).catch((err) => {
+      console.error("[ahrefs] domain-rating failed", err);
+      return { domain_rating: undefined };
+    }),
+    ahrefsGetWithDateFallback<{
+      metrics?: { live?: number; live_refdomains?: number };
+    }>("/backlinks-stats", base),
+    ahrefsGetWithDateFallback<{
+      metrics?: { org_keywords?: number; org_traffic?: number };
+    }>("/metrics", base).catch((err) => {
+      console.error("[ahrefs] metrics failed", err);
+      return { metrics: undefined };
+    }),
   ]);
 
   return {
-    domain_rating: overview.metrics?.domain_rating ?? null,
-    url_rating: overview.metrics?.url_rating ?? null,
+    domain_rating: domainRating.domain_rating?.domain_rating ?? null,
+    url_rating: null,
     backlinks: backlinksStats.metrics?.live ?? null,
     refdomains: backlinksStats.metrics?.live_refdomains ?? null,
-    organic_keywords: overview.metrics?.org_keywords ?? null,
-    organic_traffic: overview.metrics?.org_traffic ?? null,
+    organic_keywords: organic.metrics?.org_keywords ?? null,
+    organic_traffic: organic.metrics?.org_traffic ?? null,
   };
 }
 
@@ -133,11 +149,12 @@ async function fetchAnchors(target: string): Promise<AhrefsAnchorRow[]> {
       links_to_target?: number;
       refdomains?: number;
       first_seen?: string;
-      last_seen?: string;
+      last_seen?: string | null;
     }>;
   }>("/anchors", {
     target,
-    mode: "domain",
+    mode: "subdomains",
+    history: "live",
     limit: ANCHOR_LIMIT,
     order_by: "links_to_target:desc",
     select: "anchor,links_to_target,refdomains,first_seen,last_seen",
@@ -149,8 +166,8 @@ async function fetchAnchors(target: string): Promise<AhrefsAnchorRow[]> {
       anchor: row.anchor!,
       backlinks: row.links_to_target ?? null,
       refdomains: row.refdomains ?? null,
-      first_seen: row.first_seen ?? null,
-      last_seen: row.last_seen ?? null,
+      first_seen: row.first_seen?.slice(0, 10) ?? null,
+      last_seen: row.last_seen?.slice(0, 10) ?? null,
     }));
 }
 
@@ -164,11 +181,12 @@ async function fetchBacklinks(target: string): Promise<AhrefsBacklinkRow[]> {
       url_rating_source?: number;
       is_dofollow?: boolean;
       first_seen?: string;
-      last_seen?: string;
+      last_seen?: string | null;
     }>;
   }>("/all-backlinks", {
     target,
-    mode: "domain",
+    mode: "subdomains",
+    history: "live",
     limit: BACKLINK_LIMIT,
     order_by: "domain_rating_source:desc",
     select:
@@ -184,19 +202,32 @@ async function fetchBacklinks(target: string): Promise<AhrefsBacklinkRow[]> {
       domain_rating_source: row.domain_rating_source ?? null,
       url_rating_source: row.url_rating_source ?? null,
       is_dofollow: row.is_dofollow ?? null,
-      first_seen: row.first_seen ?? null,
-      last_seen: row.last_seen ?? null,
+      first_seen: row.first_seen?.slice(0, 10) ?? null,
+      last_seen: row.last_seen?.slice(0, 10) ?? null,
     }));
 }
 
 export async function fetchAhrefsForDomain(
   hostname: string,
 ): Promise<AhrefsDomainPayload> {
-  const target = hostname.replace(/^www\./, "");
-  const [metrics, anchors, backlinks] = await Promise.all([
-    fetchMetrics(target),
-    fetchAnchors(target),
-    fetchBacklinks(target),
+  const target = hostname.replace(/^www\./, "").trim();
+  if (!target) {
+    throw new Error("Domain hostname is empty");
+  }
+
+  // Metrics first (required). Anchors/backlinks are best-effort so one
+  // expensive endpoint failure doesn't wipe the whole sync.
+  const metrics = await fetchMetrics(target);
+
+  const [anchors, backlinks] = await Promise.all([
+    fetchAnchors(target).catch((err) => {
+      console.error("[ahrefs] anchors failed", target, err);
+      return [] as AhrefsAnchorRow[];
+    }),
+    fetchBacklinks(target).catch((err) => {
+      console.error("[ahrefs] backlinks failed", target, err);
+      return [] as AhrefsBacklinkRow[];
+    }),
   ]);
 
   return { metrics, anchors, backlinks };

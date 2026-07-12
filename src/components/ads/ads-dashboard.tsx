@@ -155,10 +155,10 @@ export function AdsDashboard({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="page-title">
             ADS performance
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-subtitle">
             Manual spend, registrations, deposits, and CPR for {brand.name}.
           </p>
         </div>
@@ -280,7 +280,7 @@ export function AdsDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Spend</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
+            <CardTitle className="metric-value">
               {formatCurrency(totals.spend)}
             </CardTitle>
           </CardHeader>
@@ -288,7 +288,7 @@ export function AdsDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Registrations</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
+            <CardTitle className="metric-value">
               {formatNumber(totals.registrations)}
             </CardTitle>
           </CardHeader>
@@ -296,7 +296,7 @@ export function AdsDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Deposits</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
+            <CardTitle className="metric-value">
               {formatNumber(totals.deposits)}
             </CardTitle>
           </CardHeader>
@@ -304,7 +304,7 @@ export function AdsDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>CPR</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
+            <CardTitle className="metric-value">
               {totals.cpr == null ? "—" : formatCurrency(totals.cpr)}
             </CardTitle>
           </CardHeader>
@@ -385,10 +385,16 @@ export function AdsDashboard({
                     <TableCell className="font-medium">
                       {entry.entry_date}
                     </TableCell>
-                    <TableCell>{formatCurrency(Number(entry.spend))}</TableCell>
-                    <TableCell>{formatNumber(entry.registrations)}</TableCell>
-                    <TableCell>{formatNumber(entry.deposits)}</TableCell>
-                    <TableCell>
+                    <TableCell className="table-numeric">
+                      {formatCurrency(Number(entry.spend))}
+                    </TableCell>
+                    <TableCell className="table-numeric">
+                      {formatNumber(entry.registrations)}
+                    </TableCell>
+                    <TableCell className="table-numeric">
+                      {formatNumber(entry.deposits)}
+                    </TableCell>
+                    <TableCell className="table-numeric">
                       {formatCpr(Number(entry.spend), entry.registrations)}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate text-muted-foreground">

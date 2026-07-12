@@ -164,9 +164,13 @@ export function DomainDetail({
         body: JSON.stringify({ domainId: domain.id }),
       });
       const json = await res.json();
-      if (!res.ok) toast.error(json.error ?? "Sync failed");
-      else if (json.results?.[0]?.ok === false) {
-        toast.error(json.results[0].error ?? "Sync failed");
+      if (!res.ok) {
+        toast.error(json.error ?? "Sync failed", { duration: 12000 });
+      } else if (json.results?.[0]?.ok === false) {
+        toast.error(json.results[0].error ?? "Sync failed", {
+          duration: 12000,
+        });
+        router.refresh();
       } else {
         toast.success("Ahrefs data refreshed");
         router.refresh();
@@ -189,10 +193,10 @@ export function DomainDetail({
             <ArrowLeft className="size-3.5" />
             Back to domains
           </Link>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="page-title">
             {domain.hostname}
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-subtitle">
             {domain.ahrefs_last_synced_at
               ? `Last synced ${formatDistanceToNow(new Date(domain.ahrefs_last_synced_at), { addSuffix: true })}`
               : "Not synced with Ahrefs yet"}
@@ -222,7 +226,7 @@ export function DomainDetail({
           <Card key={item.label}>
             <CardHeader className="pb-2">
               <CardDescription>{item.label}</CardDescription>
-              <CardTitle className="text-2xl tabular-nums">{item.value}</CardTitle>
+              <CardTitle className="metric-value">{item.value}</CardTitle>
             </CardHeader>
           </Card>
         ))}
@@ -352,8 +356,12 @@ export function DomainDetail({
                     <TableCell className="max-w-md truncate font-medium">
                       {row.anchor}
                     </TableCell>
-                    <TableCell>{formatNumber(row.backlinks)}</TableCell>
-                    <TableCell>{formatNumber(row.refdomains)}</TableCell>
+                    <TableCell className="table-numeric">
+                      {formatNumber(row.backlinks)}
+                    </TableCell>
+                    <TableCell className="table-numeric">
+                      {formatNumber(row.refdomains)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -398,7 +406,7 @@ export function DomainDetail({
                     <TableCell className="max-w-[180px] truncate">
                       {row.anchor || "—"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="table-numeric">
                       {formatNumber(row.domain_rating_source)}
                     </TableCell>
                     <TableCell>

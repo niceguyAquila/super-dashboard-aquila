@@ -73,7 +73,7 @@ export function AppShell({
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
           <Link
             href="/"
-            className="flex items-center gap-2 font-semibold tracking-tight"
+            className="flex items-center gap-2 text-[0.95rem] font-semibold tracking-tight"
           >
             <LayoutDashboard className="size-4 text-emerald-700" />
             <span>Brand Work</span>
@@ -131,7 +131,7 @@ export function AppShell({
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors",
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[0.875rem] font-medium transition-colors",
                     active
                       ? "bg-emerald-900 text-emerald-50"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",

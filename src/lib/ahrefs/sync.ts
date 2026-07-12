@@ -91,6 +91,7 @@ export async function syncDomainById(domainId: string): Promise<SyncResult> {
     return { domainId: domain.id, hostname: domain.hostname, ok: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown sync error";
+    console.error(`[ahrefs] sync failed for ${domain.hostname}:`, message);
     await supabase
       .from("domains")
       .update({ ahrefs_sync_error: message })

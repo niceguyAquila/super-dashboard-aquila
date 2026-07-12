@@ -15,7 +15,6 @@ import { formatNumber } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -112,10 +111,18 @@ export function DomainsInventory({
       const json = await res.json();
       if (!res.ok) {
         toast.error(json.error ?? "Sync failed");
-      } else {
-        toast.success(
-          `Synced ${json.synced - json.failed}/${json.synced} domains`,
+      } else if (json.failed > 0) {
+        const firstError =
+          json.results?.find(
+            (r: { ok: boolean; error?: string }) => !r.ok,
+          )?.error ?? "Unknown Ahrefs error";
+        toast.error(
+          `Sync failed for ${json.failed}/${json.synced}: ${firstError}`,
+          { duration: 12000 },
         );
+        router.refresh();
+      } else {
+        toast.success(`Synced ${json.synced} domain${json.synced === 1 ? "" : "s"}`);
         router.refresh();
       }
     } catch {
@@ -144,10 +151,10 @@ export function DomainsInventory({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="page-title">
             Domain inventory
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="page-subtitle">
             Track titles, social signals, and Ahrefs metrics for {brand.name}.
           </p>
         </div>
@@ -241,24 +248,27 @@ export function DomainsInventory({
                           {domain.hostname}
                         </Link>
                         {domain.ahrefs_sync_error && (
-                          <Badge variant="destructive" className="ml-2">
-                            Sync error
-                          </Badge>
+                          <p
+                            className="mt-1 max-w-xs truncate text-xs text-destructive"
+                            title={domain.ahrefs_sync_error}
+                          >
+                            {domain.ahrefs_sync_error}
+                          </p>
                         )}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate text-muted-foreground">
                         {domain.title || "—"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="table-numeric">
                         {formatNumber(metrics?.domain_rating ?? null)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="table-numeric">
                         {formatNumber(metrics?.backlinks ?? null)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="table-numeric">
                         {formatNumber(metrics?.refdomains ?? null)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="table-numeric">
                         {domain.domain_social_signals?.length ?? 0}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
