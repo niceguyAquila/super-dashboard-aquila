@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 import { deleteAdEntry, upsertAdEntry } from "@/lib/actions/ads";
 import type { AdEntry, AdPlatform, Brand } from "@/lib/types";
 import {
@@ -118,7 +118,9 @@ export function AdsDashboard({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [open, setOpen] = useState(false);
+  const [entryOpen, setEntryOpen] = useState(false);
+  const [platformsOpen, setPlatformsOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<AdEntry | null>(null);
   const [from, setFrom] = useState(initialFrom ?? defaultFrom());
   const [to, setTo] = useState(initialTo ?? toInputDate());
   const activePlatforms = useMemo(
@@ -134,6 +136,15 @@ export function AdsDashboard({
   const [deposits, setDeposits] = useState("0");
   const [notes, setNotes] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const platformOptions = useMemo(() => {
+    const byId = new Map(activePlatforms.map((p) => [p.id, p]));
+    if (editingEntry) {
+      const current = platforms.find((p) => p.id === editingEntry.platform_id);
+      if (current) byId.set(current.id, current);
+    }
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [activePlatforms, editingEntry, platforms]);
 
   const totals = useMemo(() => {
     const spendSum = entries.reduce((s, e) => s + Number(e.spend), 0);
@@ -192,9 +203,39 @@ export function AdsDashboard({
     router.push(`/${brand.slug}/ads?${params.toString()}`);
   }
 
-  function onOpenChange(next: boolean) {
-    setOpen(next);
-    if (next) {
+  function resetEntryForm() {
+    setEditingEntry(null);
+    setPlatformId(activePlatforms[0]?.id ?? "");
+    setEntryDate(toInputDate());
+    setSpend("0");
+    setRegistrations("0");
+    setDeposits("0");
+    setNotes("");
+  }
+
+  function openAddEntry() {
+    resetEntryForm();
+    setEntryOpen(true);
+  }
+
+  function openEditEntry(entry: AdEntry) {
+    setEditingEntry(entry);
+    setPlatformId(entry.platform_id);
+    setEntryDate(entry.entry_date);
+    setSpend(String(entry.spend));
+    setRegistrations(String(entry.registrations));
+    setDeposits(String(entry.deposits));
+    setNotes(entry.notes ?? "");
+    setEntryOpen(true);
+  }
+
+  function onEntryOpenChange(next: boolean) {
+    setEntryOpen(next);
+    if (!next) {
+      setEditingEntry(null);
+      return;
+    }
+    if (!editingEntry) {
       const first = activePlatforms[0]?.id ?? "";
       setPlatformId((current) =>
         activePlatforms.some((p) => p.id === current) ? current : first,
@@ -217,13 +258,14 @@ export function AdsDashboard({
     fd.set("registrations", registrations);
     fd.set("deposits", deposits);
     fd.set("notes", notes);
+    if (editingEntry) fd.set("id", editingEntry.id);
     startTransition(async () => {
       const result = await upsertAdEntry(fd);
       if (result.error) toast.error(result.error);
       else {
-        toast.success("ADS entry saved");
-        setOpen(false);
-        setNotes("");
+        toast.success(editingEntry ? "ADS entry updated" : "ADS entry saved");
+        setEntryOpen(false);
+        resetEntryForm();
         router.refresh();
       }
     });
@@ -246,6 +288,9 @@ export function AdsDashboard({
   }
 
   const canAddEntry = activePlatforms.length > 0;
+  const canSaveEntry = editingEntry
+    ? platformOptions.length > 0
+    : canAddEntry;
 
   return (
     <div className="space-y-6">
@@ -257,112 +302,129 @@ export function AdsDashboard({
             {brand.name}.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogTrigger
-            render={
-              <Button disabled={!canAddEntry}>
-                <Plus className="size-3.5" />
-                Add entry
-              </Button>
-            }
-          />
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add / update ADS entry</DialogTitle>
-            </DialogHeader>
-            {canAddEntry ? (
-              <form onSubmit={onSave} className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="platform">Platform</Label>
-                  <select
-                    id="platform"
-                    className={selectClassName}
-                    value={platformId}
-                    onChange={(e) => setPlatformId(e.target.value)}
-                    required
-                  >
-                    {activePlatforms.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="entryDate">Date</Label>
-                  <Input
-                    id="entryDate"
-                    type="date"
-                    value={entryDate}
-                    onChange={(e) => setEntryDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="spend">Spend</Label>
-                    <Input
-                      id="spend"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={spend}
-                      onChange={(e) => setSpend(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="regs">Regs</Label>
-                    <Input
-                      id="regs"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={registrations}
-                      onChange={(e) => setRegistrations(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="deps">Deposits</Label>
-                    <Input
-                      id="deps"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={deposits}
-                      onChange={(e) => setDeposits(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  CPR preview:{" "}
-                  {formatCpr(Number(spend), Number(registrations))}
-                </p>
-                <Button type="submit" className="w-full" disabled={pending}>
-                  Save entry
+        <div className="flex flex-wrap gap-2">
+          <Dialog open={platformsOpen} onOpenChange={setPlatformsOpen}>
+            <DialogTrigger
+              render={
+                <Button variant="outline">
+                  <Settings2 className="size-3.5" />
+                  Manage platforms
                 </Button>
-              </form>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Add an active platform first to log spend, regs, and deposits.
-              </p>
-            )}
-          </DialogContent>
-        </Dialog>
+              }
+            />
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Ad platforms</DialogTitle>
+              </DialogHeader>
+              <AdPlatformsManager brand={brand} platforms={platforms} />
+            </DialogContent>
+          </Dialog>
+
+          <Button disabled={!canAddEntry} onClick={openAddEntry}>
+            <Plus className="size-3.5" />
+            Add entry
+          </Button>
+        </div>
       </div>
 
-      <AdPlatformsManager brand={brand} platforms={platforms} />
+      <Dialog open={entryOpen} onOpenChange={onEntryOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingEntry ? "Edit ADS entry" : "Add ADS entry"}
+            </DialogTitle>
+          </DialogHeader>
+          {canSaveEntry ? (
+            <form onSubmit={onSave} className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="platform">Platform</Label>
+                <select
+                  id="platform"
+                  className={selectClassName}
+                  value={platformId}
+                  onChange={(e) => setPlatformId(e.target.value)}
+                  required
+                >
+                  {platformOptions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {!p.is_active ? " (inactive)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="entryDate">Date</Label>
+                <Input
+                  id="entryDate"
+                  type="date"
+                  value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="spend">Spend</Label>
+                  <Input
+                    id="spend"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={spend}
+                    onChange={(e) => setSpend(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="regs">Regs</Label>
+                  <Input
+                    id="regs"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={registrations}
+                    onChange={(e) => setRegistrations(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="deps">Deposits</Label>
+                  <Input
+                    id="deps"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={deposits}
+                    onChange={(e) => setDeposits(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                CPR preview: {formatCpr(Number(spend), Number(registrations))}
+              </p>
+              <Button type="submit" className="w-full" disabled={pending}>
+                {editingEntry ? "Update entry" : "Save entry"}
+              </Button>
+            </form>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Add an active platform first to log spend, regs, and deposits.
+              Use Manage platforms to create one.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardContent className="pt-6">
@@ -555,9 +617,7 @@ export function AdsDashboard({
                       <TableCell className="font-medium">
                         {entry.entry_date}
                       </TableCell>
-                      <TableCell>
-                        {platformName(entry) || "—"}
-                      </TableCell>
+                      <TableCell>{platformName(entry) || "—"}</TableCell>
                       <TableCell className="table-numeric">
                         {formatCurrency(Number(entry.spend))}
                       </TableCell>
@@ -574,14 +634,24 @@ export function AdsDashboard({
                         {entry.notes || "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          onClick={() => setDeleteId(entry.id)}
-                          disabled={pending}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() => openEditEntry(entry)}
+                            disabled={pending}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() => setDeleteId(entry.id)}
+                            disabled={pending}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

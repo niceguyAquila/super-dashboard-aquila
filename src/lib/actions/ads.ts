@@ -43,7 +43,14 @@ export async function upsertAdEntry(formData: FormData) {
         notes,
       })
       .eq("id", id);
-    if (error) return { error: error.message };
+    if (error) {
+      if (error.code === "23505") {
+        return {
+          error: "An entry already exists for that platform and date",
+        };
+      }
+      return { error: error.message };
+    }
   } else {
     if (!platform.is_active) {
       return { error: "Cannot add entries for an inactive platform" };

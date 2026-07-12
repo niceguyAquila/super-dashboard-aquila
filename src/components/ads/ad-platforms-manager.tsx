@@ -16,13 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -123,100 +116,95 @@ export function AdPlatformsManager({
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Ad platforms</CardTitle>
-          <CardDescription>
-            Add platforms for this brand and toggle which are active. Only
-            active platforms appear when logging spend, regs, and deposits.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            onSubmit={onCreate}
-            className="flex flex-col gap-3 sm:flex-row sm:items-end"
-          >
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="platform-name">Platform name</Label>
-              <Input
-                id="platform-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Propeller Ads"
-                required
-              />
-            </div>
-            <Button type="submit" disabled={pending}>
-              Add platform
-            </Button>
-          </form>
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Add platforms for this brand and toggle which are active. Only active
+          platforms appear when logging spend, regs, and deposits.
+        </p>
+        <form
+          onSubmit={onCreate}
+          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+        >
+          <div className="flex-1 space-y-2">
+            <Label htmlFor="platform-name">Platform name</Label>
+            <Input
+              id="platform-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Propeller Ads"
+              required
+            />
+          </div>
+          <Button type="submit" disabled={pending}>
+            Add platform
+          </Button>
+        </form>
 
-          {platforms.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No platforms yet. Add one (e.g. Propeller Ads, Rich Ads) to start
-              logging performance.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {platforms.map((platform) => (
-                  <TableRow key={platform.id}>
-                    <TableCell className="font-medium">{platform.name}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={platform.is_active ? "default" : "secondary"}
+        {platforms.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No platforms yet. Add one (e.g. Propeller Ads, Rich Ads) to start
+            logging performance.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {platforms.map((platform) => (
+                <TableRow key={platform.id}>
+                  <TableCell className="font-medium">{platform.name}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={platform.is_active ? "default" : "secondary"}
+                    >
+                      {platform.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => toggleActive(platform)}
                       >
-                        {platform.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={pending}
-                          onClick={() => toggleActive(platform)}
-                        >
-                          {platform.is_active ? "Deactivate" : "Activate"}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="ghost"
-                          disabled={pending}
-                          onClick={() => {
-                            setEditing(platform);
-                            setEditName(platform.name);
-                          }}
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="ghost"
-                          disabled={pending}
-                          onClick={() => setDeleteId(platform.id)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        {platform.is_active ? "Deactivate" : "Activate"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() => {
+                          setEditing(platform);
+                          setEditName(platform.name);
+                        }}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() => setDeleteId(platform.id)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
 
       <Dialog
         open={!!editing}
