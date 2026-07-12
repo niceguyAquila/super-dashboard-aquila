@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -46,6 +47,10 @@ export function AppShell({
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
+  }
+
+  function goTo(href: string) {
+    router.push(href);
   }
 
   const brandBase = activeBrand ? `/${activeBrand.slug}` : null;
@@ -92,30 +97,33 @@ export function AppShell({
                 }
               />
               <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>Brands</DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Brands</DropdownMenuLabel>
+                  {brands.length === 0 && (
+                    <DropdownMenuItem disabled>No brands yet</DropdownMenuItem>
+                  )}
+                  {brands.map((brand) => (
+                    <DropdownMenuItem
+                      key={brand.id}
+                      onClick={() => goTo(`/${brand.slug}/domains`)}
+                    >
+                      {brand.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                {brands.length === 0 && (
-                  <DropdownMenuItem disabled>No brands yet</DropdownMenuItem>
-                )}
-                {brands.map((brand) => (
-                  <DropdownMenuItem
-                    key={brand.id}
-                    render={<Link href={`/${brand.slug}/domains`} />}
-                  >
-                    {brand.name}
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={() => goTo("/settings/brands")}>
+                    <Settings className="size-4" />
+                    Manage brands
                   </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem render={<Link href="/settings/brands" />}>
-                  <Settings className="size-4" />
-                  Manage brands
-                </DropdownMenuItem>
-                {isSuperAdmin && (
-                  <DropdownMenuItem render={<Link href="/settings/users" />}>
-                    <Users className="size-4" />
-                    Manage users
-                  </DropdownMenuItem>
-                )}
+                  {isSuperAdmin && (
+                    <DropdownMenuItem onClick={() => goTo("/settings/users")}>
+                      <Users className="size-4" />
+                      Manage users
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
