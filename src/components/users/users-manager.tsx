@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -161,10 +162,10 @@ function UserRow({ user, isSelf }: { user: Profile; isSelf: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [resetOpen, setResetOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
 
   function onDelete() {
-    if (!confirm(`Delete user “${user.username}”?`)) return;
     const fd = new FormData();
     fd.set("id", user.id);
     startTransition(async () => {
@@ -172,6 +173,7 @@ function UserRow({ user, isSelf }: { user: Profile; isSelf: boolean }) {
       if (result.error) toast.error(result.error);
       else {
         toast.success("User deleted");
+        setConfirmOpen(false);
         router.refresh();
       }
     });
@@ -213,10 +215,7 @@ function UserRow({ user, isSelf }: { user: Profile; isSelf: boolean }) {
       </TableCell>
       <TableCell className="space-x-2 text-right">
         {resetOpen ? (
-          <form
-            onSubmit={onReset}
-            className="inline-flex items-center gap-2"
-          >
+          <form onSubmit={onReset} className="inline-flex items-center gap-2">
             <Input
               type="password"
               placeholder="New password"
@@ -250,7 +249,7 @@ function UserRow({ user, isSelf }: { user: Profile; isSelf: boolean }) {
             <Button
               size="sm"
               variant="destructive"
-              onClick={onDelete}
+              onClick={() => setConfirmOpen(true)}
               disabled={pending || isSelf}
             >
               Delete
@@ -258,6 +257,14 @@ function UserRow({ user, isSelf }: { user: Profile; isSelf: boolean }) {
           </>
         )}
       </TableCell>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete user?"
+        description={`This will permanently remove the account “${user.username}”. They will no longer be able to sign in.`}
+        pending={pending}
+        onConfirm={onDelete}
+      />
     </TableRow>
   );
 }

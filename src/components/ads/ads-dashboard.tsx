@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -80,6 +81,7 @@ export function AdsDashboard({
   const [registrations, setRegistrations] = useState("0");
   const [deposits, setDeposits] = useState("0");
   const [notes, setNotes] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const totals = useMemo(() => {
     const spendSum = entries.reduce((s, e) => s + Number(e.spend), 0);
@@ -136,16 +138,17 @@ export function AdsDashboard({
     });
   }
 
-  function remove(id: string) {
-    if (!confirm("Delete this ADS entry?")) return;
+  function remove() {
+    if (!deleteId) return;
     const fd = new FormData();
-    fd.set("id", id);
+    fd.set("id", deleteId);
     fd.set("brandSlug", brand.slug);
     startTransition(async () => {
       const result = await deleteAdEntry(fd);
       if (result.error) toast.error(result.error);
       else {
         toast.success("Deleted");
+        setDeleteId(null);
         router.refresh();
       }
     });
@@ -404,7 +407,7 @@ export function AdsDashboard({
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        onClick={() => remove(entry.id)}
+                        onClick={() => setDeleteId(entry.id)}
                         disabled={pending}
                       >
                         <Trash2 className="size-3.5" />
@@ -417,6 +420,17 @@ export function AdsDashboard({
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => {
+          if (!open) setDeleteId(null);
+        }}
+        title="Delete ADS entry?"
+        description="This will permanently remove this daily performance row."
+        pending={pending}
+        onConfirm={remove}
+      />
     </div>
   );
 }

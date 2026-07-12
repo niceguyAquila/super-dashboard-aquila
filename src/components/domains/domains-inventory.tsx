@@ -41,6 +41,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Table,
   TableBody,
@@ -49,6 +50,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/ui/table-pagination";
 
 type DomainRow = {
   id: string;
@@ -164,6 +169,10 @@ export function DomainsInventory({
   const [bulkText, setBulkText] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("hostname");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    hostname: string;
+  } | null>(null);
 
   const bulkLineCount = bulkText
     .split(/\r?\n/)
@@ -186,6 +195,8 @@ export function DomainsInventory({
     return rows;
   }, [domains, sortKey, sortDir]);
 
+  const pagination = usePagination(sortedDomains);
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -193,6 +204,7 @@ export function DomainsInventory({
       setSortKey(key);
       setSortDir(key === "hostname" || key === "title" ? "asc" : "desc");
     }
+    pagination.setPage(1);
   }
 
   async function refreshInventory() {
@@ -283,8 +295,9 @@ export function DomainsInventory({
     }
   }
 
-  function removeDomain(id: string, hostnameLabel: string) {
-    if (!confirm(`Delete ${hostnameLabel}?`)) return;
+  function removeDomain() {
+    if (!deleteTarget) return;
+    const { id } = deleteTarget;
     const fd = new FormData();
     fd.set("id", id);
     fd.set("brandSlug", brand.slug);
@@ -293,6 +306,7 @@ export function DomainsInventory({
       if (result.error) toast.error(result.error);
       else {
         toast.success("Domain deleted");
+        setDeleteTarget(null);
         await refreshInventory();
       }
     });
@@ -489,7 +503,7 @@ export function DomainsInventory({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedDomains.map((domain) => {
+                {pagination.pageItems.map((domain) => {
                   const metrics = metricsOf(domain);
                   const href = `/${brand.slug}/domains/${domain.id}`;
                   return (
@@ -546,7 +560,10 @@ export function DomainsInventory({
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeDomain(domain.id, domain.hostname);
+                            setDeleteTarget({
+                              id: domain.id,
+                              hostname: domain.hostname,
+                            });
                           }}
                           disabled={pending}
                         >
@@ -558,9 +575,30 @@ export function DomainsInventory({
                 })}
               </TableBody>
             </Table>
+            <TablePagination
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalPages={pagination.totalPages}
+              from={pagination.from}
+              to={pagination.to}
+              total={pagination.total}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete domain?"
+        description={`This will permanently remove “${deleteTarget?.hostname ?? ""}” and its Ahrefs data and social signals.`}
+        pending={pending}
+        onConfirm={removeDomain}
+      />
     </div>
   );
 }

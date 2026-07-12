@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
-import { getBrandBySlug, getBrands } from "@/lib/actions/brands";
+import { getBrandBySlug } from "@/lib/actions/brands";
 import { getDomainsForBrand } from "@/lib/actions/domains";
-import { getCurrentProfile } from "@/lib/auth/session";
-import { AppShell } from "@/components/layout/app-shell";
 import { DomainsInventory } from "@/components/domains/domains-inventory";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +14,7 @@ export default async function DomainsPage({ params }: PageProps) {
 
   if (!brandSlug?.trim()) notFound();
 
-  const [brands, brand, profile] = await Promise.all([
-    getBrands(),
-    getBrandBySlug(brandSlug),
-    getCurrentProfile(),
-  ]);
-
+  const brand = await getBrandBySlug(brandSlug);
   if (!brand) notFound();
 
   let domains;
@@ -35,9 +28,5 @@ export default async function DomainsPage({ params }: PageProps) {
     );
   }
 
-  return (
-    <AppShell brands={brands} activeBrand={brand} profile={profile}>
-      <DomainsInventory brand={brand} domains={domains ?? []} />
-    </AppShell>
-  );
+  return <DomainsInventory brand={brand} domains={domains ?? []} />;
 }

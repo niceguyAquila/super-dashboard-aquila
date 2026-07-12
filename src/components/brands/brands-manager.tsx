@@ -8,6 +8,7 @@ import type { Brand } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -116,6 +117,7 @@ function BrandRow({ brand }: { brand: Brand }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(brand.name);
   const [pending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const router = useRouter();
 
   function save() {
@@ -134,9 +136,6 @@ function BrandRow({ brand }: { brand: Brand }) {
   }
 
   function remove() {
-    if (!confirm(`Delete brand “${brand.name}”? This removes its domains and ADS data.`)) {
-      return;
-    }
     const fd = new FormData();
     fd.set("id", brand.id);
     startTransition(async () => {
@@ -144,6 +143,7 @@ function BrandRow({ brand }: { brand: Brand }) {
       if (result.error) toast.error(result.error);
       else {
         toast.success("Brand deleted");
+        setConfirmOpen(false);
         router.refresh();
       }
     });
@@ -187,12 +187,25 @@ function BrandRow({ brand }: { brand: Brand }) {
             <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
               Rename
             </Button>
-            <Button size="sm" variant="destructive" onClick={remove} disabled={pending}>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setConfirmOpen(true)}
+              disabled={pending}
+            >
               Delete
             </Button>
           </>
         )}
       </TableCell>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete brand?"
+        description={`This will permanently remove “${brand.name}” and all of its domains and ADS data.`}
+        pending={pending}
+        onConfirm={remove}
+      />
     </TableRow>
   );
 }

@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -124,6 +125,10 @@ export function DomainDetail({
   const [signalUrl, setSignalUrl] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
+  const [deleteSignal, setDeleteSignal] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
 
   const metrics = firstMetrics(domain);
   const anchors = usePagination(domain.domain_anchors);
@@ -184,9 +189,10 @@ export function DomainDetail({
     });
   }
 
-  function removeSignal(id: string) {
+  function removeSignal() {
+    if (!deleteSignal) return;
     const fd = new FormData();
-    fd.set("id", id);
+    fd.set("id", deleteSignal.id);
     fd.set("domainId", domain.id);
     fd.set("brandSlug", brand.slug);
     startTransition(async () => {
@@ -194,6 +200,7 @@ export function DomainDetail({
       if (result.error) toast.error(result.error);
       else {
         toast.success("Removed");
+        setDeleteSignal(null);
         router.refresh();
       }
     });
@@ -432,7 +439,12 @@ export function DomainDetail({
                     <Button
                       size="icon-sm"
                       variant="ghost"
-                      onClick={() => removeSignal(signal.id)}
+                      onClick={() =>
+                        setDeleteSignal({
+                          id: signal.id,
+                          label: signal.label,
+                        })
+                      }
                       disabled={pending}
                     >
                       <Trash2 className="size-3.5" />
@@ -565,6 +577,17 @@ export function DomainDetail({
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!deleteSignal}
+        onOpenChange={(open) => {
+          if (!open) setDeleteSignal(null);
+        }}
+        title="Delete social signal?"
+        description={`This will remove the “${deleteSignal?.label ?? ""}” link from this domain.`}
+        pending={pending}
+        onConfirm={removeSignal}
+      />
     </div>
   );
 }
