@@ -30,6 +30,7 @@ export type BrandSocialSignal = {
   id: string;
   brand_id: string;
   label: string;
+  social_links: string;
   url: string;
   created_at: string;
   updated_at: string;

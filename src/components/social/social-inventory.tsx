@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/table-pagination";
 import { SortableHead, useSort } from "@/components/ui/sortable-table";
 
-type SignalSortKey = "label" | "url" | "updated";
+type SignalSortKey = "label" | "socialLinks" | "url" | "updated";
 type MetricSortKey = "label" | "count" | "updated";
 
 type LabelMetric = {
@@ -83,6 +83,7 @@ function buildLabelMetrics(signals: BrandSocialSignal[]): LabelMetric[] {
 
 function signalSortValue(row: BrandSocialSignal, key: SignalSortKey) {
   if (key === "label") return row.label.toLowerCase();
+  if (key === "socialLinks") return (row.social_links ?? "").toLowerCase();
   if (key === "url") return row.url.toLowerCase();
   return new Date(signalTouchedAt(row)).getTime();
 }
@@ -108,11 +109,13 @@ export function SocialInventory({
   const [pending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const [signalLabel, setSignalLabel] = useState("");
+  const [signalSocialLinks, setSignalSocialLinks] = useState("");
   const [signalUrl, setSignalUrl] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [editSignal, setEditSignal] = useState<BrandSocialSignal | null>(null);
   const [editLabel, setEditLabel] = useState("");
+  const [editSocialLinks, setEditSocialLinks] = useState("");
   const [editUrl, setEditUrl] = useState("");
   const [deleteSignal, setDeleteSignal] = useState<{
     id: string;
@@ -130,6 +133,7 @@ export function SocialInventory({
     return signals.filter(
       (signal) =>
         signal.label.toLowerCase().includes(q) ||
+        (signal.social_links ?? "").toLowerCase().includes(q) ||
         signal.url.toLowerCase().includes(q),
     );
   }, [signals, searchQuery]);
@@ -192,6 +196,7 @@ export function SocialInventory({
   function openEdit(signal: BrandSocialSignal) {
     setEditSignal(signal);
     setEditLabel(signal.label);
+    setEditSocialLinks(signal.social_links ?? "");
     setEditUrl(signal.url);
   }
 
@@ -201,6 +206,7 @@ export function SocialInventory({
     fd.set("brandId", brand.id);
     fd.set("brandSlug", brand.slug);
     fd.set("label", signalLabel);
+    fd.set("socialLinks", signalSocialLinks);
     fd.set("url", signalUrl);
     startTransition(async () => {
       const result = await addSocialSignal(fd);
@@ -208,6 +214,7 @@ export function SocialInventory({
       else {
         toast.success("Social signal added");
         setSignalLabel("");
+        setSignalSocialLinks("");
         setSignalUrl("");
         router.refresh();
       }
@@ -242,6 +249,7 @@ export function SocialInventory({
     fd.set("id", editSignal.id);
     fd.set("brandSlug", brand.slug);
     fd.set("label", editLabel);
+    fd.set("socialLinks", editSocialLinks);
     fd.set("url", editUrl);
     startTransition(async () => {
       const result = await updateSocialSignal(fd);
@@ -285,7 +293,7 @@ export function SocialInventory({
             <Input
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search label or URL…"
+              placeholder="Search label, social links, or URL…"
               className="pl-8"
               aria-label="Search social signals"
             />
@@ -304,8 +312,8 @@ export function SocialInventory({
                 <DialogTitle>Bulk import social signals</DialogTitle>
                 <DialogDescription>
                   One entry per line. Supported formats:{" "}
-                  <code className="text-xs">Label,URL</code>,{" "}
-                  <code className="text-xs">Label | URL</code>, or a bare URL.
+                  <code className="text-xs">Label,Social Links,URL</code> or{" "}
+                  <code className="text-xs">Label | Social Links | URL</code>.
                 </DialogDescription>
               </DialogHeader>
               <form
@@ -317,7 +325,7 @@ export function SocialInventory({
                     value={bulkText}
                     onChange={(e) => setBulkText(e.target.value)}
                     className="field-sizing-fixed h-[min(50vh,360px)] max-h-[min(50vh,360px)] min-h-[160px] resize-none overflow-y-auto font-mono text-[0.8125rem] leading-relaxed"
-                    placeholder={`Twitter,https://x.com/brand\nTelegram | https://t.me/brand\nhttps://facebook.com/brand`}
+                    placeholder={`Twitter,Brand X,https://x.com/brand\nTelegram | Channel Y | https://t.me/brand`}
                     required
                   />
                 </div>
@@ -352,101 +360,31 @@ export function SocialInventory({
 
       <Card>
         <CardHeader>
-          <CardTitle>Label metrics</CardTitle>
-          <CardDescription>
-            {labelMetrics.length} label
-            {labelMetrics.length === 1 ? "" : "s"} ·{" "}
-            {signals.length} link{signals.length === 1 ? "" : "s"} total
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {labelMetrics.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {searchQuery.trim()
-                ? "No labels match your search."
-                : "No labels yet. Add links below to see counts and last updated dates."}
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHead
-                      label="Label"
-                      sortKey="label"
-                      activeKey={metricSortKey}
-                      dir={metricSortDir}
-                      onSort={toggleMetricSortAndReset}
-                    />
-                    <SortableHead
-                      label="Links"
-                      sortKey="count"
-                      activeKey={metricSortKey}
-                      dir={metricSortDir}
-                      onSort={toggleMetricSortAndReset}
-                    />
-                    <SortableHead
-                      label="Last updated"
-                      sortKey="updated"
-                      activeKey={metricSortKey}
-                      dir={metricSortDir}
-                      onSort={toggleMetricSortAndReset}
-                    />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {metricsPagination.pageItems.map((metric) => (
-                    <TableRow key={metric.label}>
-                      <TableCell>
-                        <Badge variant="secondary">{metric.label}</Badge>
-                      </TableCell>
-                      <TableCell className="table-numeric">
-                        {formatNumber(metric.count)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatRelative(metric.lastUpdatedAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                id="label-metrics-page-size"
-                page={metricsPagination.page}
-                pageSize={metricsPagination.pageSize}
-                totalPages={metricsPagination.totalPages}
-                from={metricsPagination.from}
-                to={metricsPagination.to}
-                total={metricsPagination.total}
-                onPageChange={metricsPagination.setPage}
-                onPageSizeChange={metricsPagination.setPageSize}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Social signals</CardTitle>
           <CardDescription>
-            {signals.length} link{signals.length === 1 ? "" : "s"} for this
+            {signals.length} signal{signals.length === 1 ? "" : "s"} for this
             brand · click a column header to sort
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form
             onSubmit={addSignal}
-            className="grid gap-3 sm:grid-cols-[1fr_1.4fr_auto]"
+            className="grid gap-3 sm:grid-cols-[1fr_1fr_1.4fr_auto]"
           >
             <Input
-              placeholder="Label (Twitter, TG…)"
+              placeholder="Label"
               value={signalLabel}
               onChange={(e) => setSignalLabel(e.target.value)}
               required
             />
             <Input
-              placeholder="https://…"
+              placeholder="Social Links"
+              value={signalSocialLinks}
+              onChange={(e) => setSignalSocialLinks(e.target.value)}
+              required
+            />
+            <Input
+              placeholder="URL (https://…)"
               value={signalUrl}
               onChange={(e) => setSignalUrl(e.target.value)}
               required
@@ -461,7 +399,7 @@ export function SocialInventory({
             <p className="text-sm text-muted-foreground">
               {searchQuery.trim()
                 ? "No social signals match your search."
-                : "No social signal links yet. Add your first link above."}
+                : "No social signals yet. Add your first signal above."}
             </p>
           ) : (
             <>
@@ -471,6 +409,13 @@ export function SocialInventory({
                     <SortableHead
                       label="Label"
                       sortKey="label"
+                      activeKey={signalSortKey}
+                      dir={signalSortDir}
+                      onSort={toggleSignalSortAndReset}
+                    />
+                    <SortableHead
+                      label="Social Links"
+                      sortKey="socialLinks"
                       activeKey={signalSortKey}
                       dir={signalSortDir}
                       onSort={toggleSignalSortAndReset}
@@ -497,6 +442,9 @@ export function SocialInventory({
                     <TableRow key={signal.id}>
                       <TableCell>
                         <Badge variant="secondary">{signal.label}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[180px] truncate">
+                        {signal.social_links || "—"}
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
                         <a
@@ -557,6 +505,82 @@ export function SocialInventory({
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Label metrics</CardTitle>
+          <CardDescription>
+            {labelMetrics.length} label
+            {labelMetrics.length === 1 ? "" : "s"} ·{" "}
+            {signals.length} signal{signals.length === 1 ? "" : "s"} total
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {labelMetrics.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {searchQuery.trim()
+                ? "No metrics match your search."
+                : "No metrics yet. Add signals above to see counts and last updated dates."}
+            </p>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableHead
+                      label="Label"
+                      sortKey="label"
+                      activeKey={metricSortKey}
+                      dir={metricSortDir}
+                      onSort={toggleMetricSortAndReset}
+                    />
+                    <SortableHead
+                      label="Count"
+                      sortKey="count"
+                      activeKey={metricSortKey}
+                      dir={metricSortDir}
+                      onSort={toggleMetricSortAndReset}
+                    />
+                    <SortableHead
+                      label="Last updated"
+                      sortKey="updated"
+                      activeKey={metricSortKey}
+                      dir={metricSortDir}
+                      onSort={toggleMetricSortAndReset}
+                    />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {metricsPagination.pageItems.map((metric) => (
+                    <TableRow key={metric.label}>
+                      <TableCell>
+                        <Badge variant="secondary">{metric.label}</Badge>
+                      </TableCell>
+                      <TableCell className="table-numeric">
+                        {formatNumber(metric.count)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatRelative(metric.lastUpdatedAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                id="label-metrics-page-size"
+                page={metricsPagination.page}
+                pageSize={metricsPagination.pageSize}
+                totalPages={metricsPagination.totalPages}
+                from={metricsPagination.from}
+                to={metricsPagination.to}
+                total={metricsPagination.total}
+                onPageChange={metricsPagination.setPage}
+                onPageSizeChange={metricsPagination.setPageSize}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       <Dialog
         open={!!editSignal}
         onOpenChange={(open) => {
@@ -567,7 +591,7 @@ export function SocialInventory({
           <DialogHeader>
             <DialogTitle>Edit social signal</DialogTitle>
             <DialogDescription>
-              Updating a link refreshes its last updated time.
+              Updating a signal refreshes its last updated time.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={saveEdit} className="space-y-4">
@@ -577,6 +601,15 @@ export function SocialInventory({
                 id="edit-label"
                 value={editLabel}
                 onChange={(e) => setEditLabel(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-social-links">Social Links</Label>
+              <Input
+                id="edit-social-links"
+                value={editSocialLinks}
+                onChange={(e) => setEditSocialLinks(e.target.value)}
                 required
               />
             </div>
@@ -602,7 +635,7 @@ export function SocialInventory({
           if (!open) setDeleteSignal(null);
         }}
         title="Delete social signal?"
-        description={`This will remove the “${deleteSignal?.label ?? ""}” link from this brand.`}
+        description={`This will remove the “${deleteSignal?.label ?? ""}” signal from this brand.`}
         pending={pending}
         onConfirm={removeSignal}
       />

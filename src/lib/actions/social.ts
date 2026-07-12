@@ -3,6 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+function normalizeUrl(url: string) {
+  let normalized = url.replace(/^<|>$/g, "").trim();
+  if (!normalized) return "";
+  if (!/^https?:\/\//i.test(normalized)) {
+    normalized = `https://${normalized}`;
+  }
+  return normalized;
+}
+
 export async function getSocialSignals(brandId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -22,16 +31,18 @@ export async function addSocialSignal(formData: FormData) {
   const brandId = String(formData.get("brandId") ?? "");
   const brandSlug = String(formData.get("brandSlug") ?? "");
   const label = String(formData.get("label") ?? "").trim();
-  const url = String(formData.get("url") ?? "").trim();
+  const socialLinks = String(formData.get("socialLinks") ?? "").trim();
+  const url = normalizeUrl(String(formData.get("url") ?? ""));
 
-  if (!brandId || !label || !url) {
-    return { error: "Label and URL are required" };
+  if (!brandId || !label || !socialLinks || !url) {
+    return { error: "Label, Social Links, and URL are required" };
   }
 
   const supabase = await createClient();
   const { error } = await supabase.from("brand_social_signals").insert({
     brand_id: brandId,
     label,
+    social_links: socialLinks,
     url,
   });
 
@@ -52,7 +63,7 @@ export async function bulkImportSocialSignals(formData: FormData) {
   if (rows.length === 0) {
     return {
       error:
-        "No valid rows found. Use one per line: Label,URL or Label | URL or just a URL.",
+        "No valid rows found. Use one per line: Label,Social Links,URL or Label | Social Links | URL.",
     };
   }
 
@@ -61,6 +72,7 @@ export async function bulkImportSocialSignals(formData: FormData) {
     rows.map((row) => ({
       brand_id: brandId,
       label: row.label,
+      social_links: row.socialLinks,
       url: row.url,
     })),
   );
@@ -73,49 +85,35 @@ export async function bulkImportSocialSignals(formData: FormData) {
 
 function parseSocialSignalBulk(
   raw: string,
-): Array<{ label: string; url: string }> {
+): Array<{ label: string; socialLinks: string; url: string }> {
   const lines = raw
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"));
 
-  const rows: Array<{ label: string; url: string }> = [];
+  const rows: Array<{ label: string; socialLinks: string; url: string }> = [];
 
   for (const line of lines) {
-    let label = "";
-    let url = "";
+    let parts: string[] = [];
 
     if (line.includes("|")) {
-      const [left, ...rest] = line.split("|");
-      label = left.trim();
-      url = rest.join("|").trim();
-    } else if (line.includes(",")) {
-      const idx = line.indexOf(",");
-      label = line.slice(0, idx).trim();
-      url = line.slice(idx + 1).trim();
+      parts = line.split("|").map((p) => p.trim());
     } else if (line.includes("\t")) {
-      const [left, ...rest] = line.split("\t");
-      label = left.trim();
-      url = rest.join("\t").trim();
-    } else if (/^https?:\/\//i.test(line)) {
-      url = line;
-      try {
-        const host = new URL(line).hostname.replace(/^www\./, "");
-        label = host.split(".")[0] || "Link";
-        label = label.charAt(0).toUpperCase() + label.slice(1);
-      } catch {
-        label = "Link";
-      }
+      parts = line.split("\t").map((p) => p.trim());
+    } else if (line.includes(",")) {
+      parts = line.split(",").map((p) => p.trim());
     } else {
       continue;
     }
 
-    url = url.replace(/^<|>$/g, "").trim();
-    if (!label || !url) continue;
-    if (!/^https?:\/\//i.test(url)) {
-      url = `https://${url}`;
-    }
-    rows.push({ label, url });
+    if (parts.length < 3) continue;
+
+    const label = parts[0] ?? "";
+    const socialLinks = parts[1] ?? "";
+    const url = normalizeUrl(parts.slice(2).join(","));
+
+    if (!label || !socialLinks || !url) continue;
+    rows.push({ label, socialLinks, url });
   }
 
   return rows;
@@ -142,21 +140,17 @@ export async function updateSocialSignal(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const brandSlug = String(formData.get("brandSlug") ?? "");
   const label = String(formData.get("label") ?? "").trim();
-  const url = String(formData.get("url") ?? "").trim();
+  const socialLinks = String(formData.get("socialLinks") ?? "").trim();
+  const url = normalizeUrl(String(formData.get("url") ?? ""));
 
-  if (!id || !label || !url) {
-    return { error: "Label and URL are required" };
-  }
-
-  let normalizedUrl = url.replace(/^<|>$/g, "").trim();
-  if (!/^https?:\/\//i.test(normalizedUrl)) {
-    normalizedUrl = `https://${normalizedUrl}`;
+  if (!id || !label || !socialLinks || !url) {
+    return { error: "Label, Social Links, and URL are required" };
   }
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("brand_social_signals")
-    .update({ label, url: normalizedUrl })
+    .update({ label, social_links: socialLinks, url })
     .eq("id", id);
 
   if (error) return { error: error.message };
