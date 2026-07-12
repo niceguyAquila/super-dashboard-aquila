@@ -9,6 +9,7 @@ import {
   LogOut,
   Megaphone,
   Settings,
+  Share2,
   Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -62,6 +63,12 @@ export function AppShell({
           label: "Domains",
           icon: Globe2,
           match: "/domains",
+        },
+        {
+          href: `${brandBase}/social`,
+          label: "Social",
+          icon: Share2,
+          match: "/social",
         },
         {
           href: `${brandBase}/ads`,

@@ -65,7 +65,6 @@ type DomainRow = {
         refdomains: number | null;
       }[]
     | null;
-  domain_social_signals: { id: string }[];
 };
 
 type SortKey =
@@ -74,7 +73,6 @@ type SortKey =
   | "dr"
   | "backlinks"
   | "refdomains"
-  | "social"
   | "synced";
 
 function metricsOf(row: DomainRow) {
@@ -96,8 +94,6 @@ function domainSortValue(row: DomainRow, key: SortKey): string | number {
       return Number(metrics?.backlinks ?? -1);
     case "refdomains":
       return Number(metrics?.refdomains ?? -1);
-    case "social":
-      return row.domain_social_signals?.length ?? 0;
     case "synced":
       return row.ahrefs_last_synced_at
         ? new Date(row.ahrefs_last_synced_at).getTime()
@@ -261,7 +257,7 @@ export function DomainsInventory({
         <div>
           <h1 className="page-title">Domain inventory</h1>
           <p className="page-subtitle">
-            Track titles, social signals, and Ahrefs metrics for {brand.name}.
+            Track titles and Ahrefs metrics for {brand.name}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -430,13 +426,6 @@ export function DomainsInventory({
                       onSort={toggleSort}
                     />
                     <SortableHead
-                      label="Social"
-                      sortKey="social"
-                      activeKey={sortKey}
-                      dir={sortDir}
-                      onSort={toggleSort}
-                    />
-                    <SortableHead
                       label="Last synced"
                       sortKey="synced"
                       activeKey={sortKey}
@@ -486,9 +475,6 @@ export function DomainsInventory({
                         </TableCell>
                         <TableCell className="table-numeric">
                           {formatNumber(metrics?.refdomains ?? null)}
-                        </TableCell>
-                        <TableCell className="table-numeric">
-                          {domain.domain_social_signals?.length ?? 0}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {domain.ahrefs_last_synced_at
@@ -540,7 +526,7 @@ export function DomainsInventory({
           if (!open) setDeleteTarget(null);
         }}
         title="Delete domain?"
-        description={`This will permanently remove “${deleteTarget?.hostname ?? ""}” and its Ahrefs data and social signals.`}
+        description={`This will permanently remove “${deleteTarget?.hostname ?? ""}” and its Ahrefs data.`}
         pending={pending}
         onConfirm={removeDomain}
       />

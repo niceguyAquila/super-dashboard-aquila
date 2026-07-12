@@ -26,9 +26,9 @@ export type Domain = {
   created_at: string;
 };
 
-export type DomainSocialSignal = {
+export type BrandSocialSignal = {
   id: string;
-  domain_id: string;
+  brand_id: string;
   label: string;
   url: string;
   created_at: string;
@@ -93,5 +93,4 @@ export type AdEntry = {
 
 export type DomainWithMetrics = Domain & {
   domain_ahrefs_metrics: DomainAhrefsMetrics | null;
-  domain_social_signals: DomainSocialSignal[];
 };
