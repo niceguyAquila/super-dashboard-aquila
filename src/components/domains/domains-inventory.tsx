@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 import {
+  bulkImportDomains,
   createDomain,
   deleteDomain,
 } from "@/lib/actions/domains";
@@ -14,6 +15,7 @@ import { formatNumber } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -24,6 +26,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -73,10 +76,12 @@ export function DomainsInventory({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [syncing, setSyncing] = useState(false);
   const [hostname, setHostname] = useState("");
   const [title, setTitle] = useState("");
+  const [bulkText, setBulkText] = useState("");
 
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -95,6 +100,35 @@ export function DomainsInventory({
       setHostname("");
       setTitle("");
       setOpen(false);
+      router.refresh();
+    });
+  }
+
+  function onBulkImport(e: React.FormEvent) {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.set("brandId", brand.id);
+    fd.set("brandSlug", brand.slug);
+    fd.set("bulkText", bulkText);
+    startTransition(async () => {
+      const result = await bulkImportDomains(fd);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      const imported = result.imported ?? 0;
+      const skipped = result.skipped ?? 0;
+      if (imported === 0 && skipped > 0) {
+        toast.message(`No new domains — ${skipped} already existed`);
+      } else {
+        toast.success(
+          `Imported ${imported} domain${imported === 1 ? "" : "s"}${
+            skipped ? ` (${skipped} skipped)` : ""
+          }`,
+        );
+      }
+      setBulkText("");
+      setBulkOpen(false);
       router.refresh();
     });
   }
@@ -157,7 +191,7 @@ export function DomainsInventory({
             Track titles, social signals, and Ahrefs metrics for {brand.name}.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={syncAll}
@@ -166,6 +200,40 @@ export function DomainsInventory({
             <RefreshCw className={`size-3.5 ${syncing ? "animate-spin" : ""}`} />
             Sync Ahrefs
           </Button>
+          <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+            <DialogTrigger
+              render={
+                <Button variant="outline">
+                  <Upload className="size-3.5" />
+                  Bulk import
+                </Button>
+              }
+            />
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Bulk import domains</DialogTitle>
+                <DialogDescription>
+                  One domain per line. Formats:{" "}
+                  <code className="text-xs">example.com</code>,{" "}
+                  <code className="text-xs">example.com,Title</code>, or{" "}
+                  <code className="text-xs">example.com | Title</code>. Existing
+                  domains are skipped.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={onBulkImport} className="space-y-4">
+                <Textarea
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  rows={12}
+                  placeholder={`dzinetrip.com,ZENPLAY168\nexample.com\nanother-site.com | Main Title`}
+                  required
+                />
+                <Button type="submit" className="w-full" disabled={pending}>
+                  Import domains
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
               render={

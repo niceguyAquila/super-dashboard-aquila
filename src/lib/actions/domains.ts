@@ -28,6 +28,106 @@ export async function createDomain(formData: FormData) {
   return { data };
 }
 
+export async function bulkImportDomains(formData: FormData) {
+  const brandId = String(formData.get("brandId") ?? "");
+  const brandSlug = String(formData.get("brandSlug") ?? "");
+  const raw = String(formData.get("bulkText") ?? "");
+
+  if (!brandId) return { error: "Invalid brand" };
+
+  const parsed = parseDomainBulk(raw);
+  if (parsed.length === 0) {
+    return {
+      error:
+        "No valid domains found. Use one per line: example.com or example.com,Title",
+    };
+  }
+
+  // Deduplicate by hostname within the paste
+  const unique = new Map<string, { hostname: string; title: string | null }>();
+  for (const row of parsed) {
+    if (!unique.has(row.hostname)) unique.set(row.hostname, row);
+  }
+  const rows = [...unique.values()];
+
+  const supabase = await createClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("domains")
+    .select("hostname")
+    .eq("brand_id", brandId)
+    .in(
+      "hostname",
+      rows.map((r) => r.hostname),
+    );
+
+  if (existingError) return { error: existingError.message };
+
+  const existingSet = new Set((existing ?? []).map((d) => d.hostname));
+  const toInsert = rows.filter((r) => !existingSet.has(r.hostname));
+
+  if (toInsert.length === 0) {
+    return {
+      ok: true,
+      imported: 0,
+      skipped: rows.length,
+    };
+  }
+
+  const { error } = await supabase.from("domains").insert(
+    toInsert.map((row) => ({
+      brand_id: brandId,
+      hostname: row.hostname,
+      title: row.title,
+    })),
+  );
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/${brandSlug}/domains`);
+  return {
+    ok: true,
+    imported: toInsert.length,
+    skipped: rows.length - toInsert.length,
+  };
+}
+
+function parseDomainBulk(
+  raw: string,
+): Array<{ hostname: string; title: string | null }> {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"));
+
+  const rows: Array<{ hostname: string; title: string | null }> = [];
+
+  for (const line of lines) {
+    let hostnamePart = line;
+    let title: string | null = null;
+
+    if (line.includes("|")) {
+      const [left, ...rest] = line.split("|");
+      hostnamePart = left.trim();
+      title = rest.join("|").trim() || null;
+    } else if (line.includes(",") && !/^https?:\/\//i.test(line.split(",")[0] ?? "")) {
+      const idx = line.indexOf(",");
+      hostnamePart = line.slice(0, idx).trim();
+      title = line.slice(idx + 1).trim() || null;
+    } else if (line.includes("\t")) {
+      const [left, ...rest] = line.split("\t");
+      hostnamePart = left.trim();
+      title = rest.join("\t").trim() || null;
+    }
+
+    const hostname = normalizeHostname(hostnamePart);
+    if (!hostname || !hostname.includes(".")) continue;
+    rows.push({ hostname, title });
+  }
+
+  return rows;
+}
+
 export async function updateDomain(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const brandSlug = String(formData.get("brandSlug") ?? "");
@@ -204,7 +304,10 @@ export async function getDomainsForBrand(brandId: string) {
     .eq("brand_id", brandId)
     .order("hostname");
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[domains] getDomainsForBrand failed:", error.message);
+    throw new Error(`Failed to load domains: ${error.message}`);
+  }
   return data ?? [];
 }
 

@@ -11,6 +11,9 @@ type PageProps = {
 
 export default async function DomainsPage({ params }: PageProps) {
   const { brandSlug } = await params;
+
+  if (!brandSlug?.trim()) notFound();
+
   const [brands, brand, profile] = await Promise.all([
     getBrands(),
     getBrandBySlug(brandSlug),
@@ -19,11 +22,20 @@ export default async function DomainsPage({ params }: PageProps) {
 
   if (!brand) notFound();
 
-  const domains = await getDomainsForBrand(brand.id);
+  let domains;
+  try {
+    domains = await getDomainsForBrand(brand.id);
+  } catch (err) {
+    throw new Error(
+      err instanceof Error
+        ? err.message
+        : "Failed to load domain inventory for this brand.",
+    );
+  }
 
   return (
     <AppShell brands={brands} activeBrand={brand} profile={profile}>
-      <DomainsInventory brand={brand} domains={domains} />
+      <DomainsInventory brand={brand} domains={domains ?? []} />
     </AppShell>
   );
 }

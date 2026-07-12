@@ -100,20 +100,18 @@ export function AppShell({
                 {brands.map((brand) => (
                   <DropdownMenuItem
                     key={brand.id}
-                    onClick={() => router.push(`/${brand.slug}/domains`)}
+                    render={<Link href={`/${brand.slug}/domains`} />}
                   >
                     {brand.name}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/settings/brands")}>
+                <DropdownMenuItem render={<Link href="/settings/brands" />}>
                   <Settings className="size-4" />
                   Manage brands
                 </DropdownMenuItem>
                 {isSuperAdmin && (
-                  <DropdownMenuItem
-                    onClick={() => router.push("/settings/users")}
-                  >
+                  <DropdownMenuItem render={<Link href="/settings/users" />}>
                     <Users className="size-4" />
                     Manage users
                   </DropdownMenuItem>
