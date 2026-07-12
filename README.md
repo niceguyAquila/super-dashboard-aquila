@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Brand Work Dashboard
 
-## Getting Started
+Brand-scoped dashboard for **domain inventory** (Ahrefs sync + social signals) and **ADS performance** (manual spend / regs / deposits / CPR).
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind + shadcn/ui
+- Supabase (Auth + Postgres + RLS)
+- Ahrefs API v3 (server-side sync)
+- Vercel Cron for daily freshness
+
+## Setup
+
+1. Create a Supabase project and run:
+   - [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql)
+   - [`supabase/migrations/002_profiles_auth.sql`](supabase/migrations/002_profiles_auth.sql)
+2. Copy [`.env.example`](.env.example) to `.env.local` and fill in values (service role key is required for user creation).
+3. In Supabase Auth → Providers, enable **Email** password sign-in. Disable public sign-ups in Auth settings if available.
+4. Install and run:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000/login](http://localhost:3000/login). On first launch, create the **super admin** username/password. After that, only that admin can create more accounts under **Manage users**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Auth model
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Username + password only (no public sign up).
+- Usernames are stored in `profiles` and authenticated via synthetic emails (`username@users.brandwork.local`) under the hood.
+- Super admins can create users, reset passwords, and delete accounts at `/settings/users`.
 
-## Learn More
+## Ahrefs sync
 
-To learn more about Next.js, take a look at the following resources:
+- Manual: **Sync Ahrefs** on the domains list, or **Sync now** on a domain detail page.
+- Scheduled: Vercel Cron hits `GET /api/ahrefs/sync` daily at 06:00 UTC (`vercel.json`). Set `CRON_SECRET` and `AHREFS_API_TOKEN`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Sync caches metrics, top 50 anchors, and top 50 backlinks per domain to limit API credit use.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Routes
 
-## Deploy on Vercel
+| Path | Purpose |
+|------|---------|
+| `/login` | Username/password login (or first-time super admin setup) |
+| `/` | Brand picker |
+| `/settings/brands` | Create / rename / delete brands |
+| `/settings/users` | Super admin: create / reset / delete users |
+| `/[brand]/domains` | Domain inventory |
+| `/[brand]/domains/[id]` | Title, social signals, Ahrefs data |
+| `/[brand]/ads` | ADS metrics + CPR |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## CPR
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+CPR is computed as `spend / registrations` (not stored). Average CPR on the ADS dashboard uses totals for the selected date range.
