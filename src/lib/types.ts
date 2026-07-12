@@ -32,6 +32,7 @@ export type BrandSocialSignal = {
   label: string;
   url: string;
   created_at: string;
+  updated_at: string;
 };
 
 export type DomainAhrefsMetrics = {

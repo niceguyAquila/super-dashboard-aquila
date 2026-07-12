@@ -137,3 +137,30 @@ export async function deleteSocialSignal(formData: FormData) {
   revalidatePath(`/${brandSlug}/social`);
   return { ok: true };
 }
+
+export async function updateSocialSignal(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const brandSlug = String(formData.get("brandSlug") ?? "");
+  const label = String(formData.get("label") ?? "").trim();
+  const url = String(formData.get("url") ?? "").trim();
+
+  if (!id || !label || !url) {
+    return { error: "Label and URL are required" };
+  }
+
+  let normalizedUrl = url.replace(/^<|>$/g, "").trim();
+  if (!/^https?:\/\//i.test(normalizedUrl)) {
+    normalizedUrl = `https://${normalizedUrl}`;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("brand_social_signals")
+    .update({ label, url: normalizedUrl })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/${brandSlug}/social`);
+  return { ok: true };
+}
