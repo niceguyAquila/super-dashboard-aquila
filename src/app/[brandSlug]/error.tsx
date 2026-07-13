@@ -16,9 +16,9 @@ export default function BrandError({
   }, [error]);
 
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-7xl items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md space-y-4 rounded-xl bg-card p-6 text-center ring-1 ring-foreground/10">
-        <h1 className="text-2xl font-semibold tracking-tight">
+    <main className="mx-auto flex min-h-[60vh] max-w-6xl items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md space-y-4 rounded-xl border border-border bg-card p-6 text-center">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
           Couldn’t open this brand
         </h1>
         <p className="break-words text-sm text-muted-foreground">

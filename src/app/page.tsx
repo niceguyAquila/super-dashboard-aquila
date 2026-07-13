@@ -52,7 +52,7 @@ export default async function HomePage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {brands.map((brand) => (
               <Link key={brand.id} href={`/${brand.slug}/domains`}>
-                <Card className="transition-colors hover:border-nav-active/40 hover:bg-accent">
+                <Card className="border-border transition-colors hover:border-nav-active/50 hover:bg-accent">
                   <CardHeader>
                     <CardTitle>{brand.name}</CardTitle>
                     <CardDescription>/{brand.slug}</CardDescription>

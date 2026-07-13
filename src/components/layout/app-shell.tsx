@@ -1,13 +1,14 @@
 ﻿"use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronDown,
   Globe2,
-  LayoutDashboard,
   LogOut,
   Megaphone,
+  Menu,
   Settings,
   Share2,
   Users,
@@ -21,9 +22,13 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 type AppShellProps = {
@@ -32,6 +37,217 @@ type AppShellProps = {
   profile?: Profile | null;
   children: React.ReactNode;
 };
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof Globe2;
+  match: string;
+};
+
+function Wordmark({ className }: { className?: string }) {
+  return (
+    <Link
+      href="/"
+      className={cn("group flex items-center gap-2.5", className)}
+    >
+      <span
+        aria-hidden
+        className="size-2.5 shrink-0 rounded-sm bg-nav-active"
+      />
+      <span className="font-display text-[1.35rem] font-semibold tracking-tight text-foreground">
+        Brand Work
+      </span>
+    </Link>
+  );
+}
+
+function RailNav({
+  nav,
+  pathname,
+  onNavigate,
+}: {
+  nav: NavItem[];
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  if (nav.length === 0) return null;
+
+  return (
+    <nav className="flex flex-col gap-0.5">
+      {nav.map((item) => {
+        const active = pathname.includes(item.match);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className={cn(
+              "relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9rem] font-medium transition-colors",
+              active
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            {active && (
+              <span
+                aria-hidden
+                className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-nav-active"
+              />
+            )}
+            <Icon className="size-4 shrink-0 opacity-80" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function BrandSwitcher({
+  brands,
+  activeBrand,
+  onSelect,
+  className,
+}: {
+  brands: Brand[];
+  activeBrand?: Brand | null;
+  onSelect: (href: string) => void;
+  className?: string;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn("w-full justify-between gap-1.5", className)}
+          >
+            <span className="truncate">
+              {activeBrand?.name ?? "Select brand"}
+            </span>
+            <ChevronDown className="size-3.5 shrink-0 opacity-60" />
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Brands</DropdownMenuLabel>
+          {brands.length === 0 && (
+            <DropdownMenuItem disabled>No brands yet</DropdownMenuItem>
+          )}
+          {brands.map((brand) => (
+            <DropdownMenuItem
+              key={brand.id}
+              onClick={() => onSelect(`/${brand.slug}/domains`)}
+            >
+              {brand.name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function RailFooter({
+  isSuperAdmin,
+  username,
+  onNavigate,
+  onSignOut,
+}: {
+  isSuperAdmin: boolean;
+  username?: string | null;
+  onNavigate: (href: string) => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <div className="mt-auto space-y-3 border-t border-sidebar-border pt-4">
+      <div className="flex flex-col gap-0.5">
+        <button
+          type="button"
+          onClick={() => onNavigate("/settings/brands")}
+          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[0.875rem] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Settings className="size-4 shrink-0" />
+          Manage brands
+        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => onNavigate("/settings/users")}
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[0.875rem] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Users className="size-4 shrink-0" />
+            Manage users
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 px-1">
+        {username && (
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+            {username}
+          </span>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0"
+          onClick={onSignOut}
+        >
+          <LogOut className="size-3.5" />
+          Sign out
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RailBody({
+  brands,
+  activeBrand,
+  nav,
+  pathname,
+  isSuperAdmin,
+  username,
+  onNavigate,
+  onSignOut,
+  onClose,
+}: {
+  brands: Brand[];
+  activeBrand?: Brand | null;
+  nav: NavItem[];
+  pathname: string;
+  isSuperAdmin: boolean;
+  username?: string | null;
+  onNavigate: (href: string) => void;
+  onSignOut: () => void;
+  onClose?: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col gap-6 p-5">
+      <Wordmark />
+
+      <BrandSwitcher
+        brands={brands}
+        activeBrand={activeBrand}
+        onSelect={onNavigate}
+      />
+
+      <RailNav nav={nav} pathname={pathname} onNavigate={onClose} />
+
+      <RailFooter
+        isSuperAdmin={isSuperAdmin}
+        username={username}
+        onNavigate={onNavigate}
+        onSignOut={onSignOut}
+      />
+    </div>
+  );
+}
 
 export function AppShell({
   brands,
@@ -42,6 +258,7 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const isSuperAdmin = profile?.role === "super_admin";
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   async function signOut() {
     const supabase = createClient();
@@ -51,12 +268,13 @@ export function AppShell({
   }
 
   function goTo(href: string) {
+    setMobileOpen(false);
     router.push(href);
   }
 
   const brandBase = activeBrand ? `/${activeBrand.slug}` : null;
 
-  const nav = activeBrand
+  const nav: NavItem[] = activeBrand
     ? [
         {
           href: `${brandBase}/domains`,
@@ -80,98 +298,59 @@ export function AppShell({
     : [];
 
   return (
-    <div className="min-h-screen bg-shell-bg">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4 sm:px-6">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-[0.95rem] font-semibold tracking-tight"
-          >
-            <LayoutDashboard className="size-4 text-nav-active" />
-            <span>Brand Work</span>
-          </Link>
+    <div className="flex min-h-screen bg-shell-bg">
+      {/* Desktop rail */}
+      <aside className="sticky top-0 hidden h-screen w-[220px] shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col">
+        <RailBody
+          brands={brands}
+          activeBrand={activeBrand}
+          nav={nav}
+          pathname={pathname}
+          isSuperAdmin={isSuperAdmin}
+          username={profile?.username}
+          onNavigate={goTo}
+          onSignOut={signOut}
+        />
+      </aside>
 
-          <div className="ml-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <span className="max-w-[160px] truncate">
-                      {activeBrand?.name ?? "Select brand"}
-                    </span>
-                    <ChevronDown className="size-3.5 opacity-60" />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Brands</DropdownMenuLabel>
-                  {brands.length === 0 && (
-                    <DropdownMenuItem disabled>No brands yet</DropdownMenuItem>
-                  )}
-                  {brands.map((brand) => (
-                    <DropdownMenuItem
-                      key={brand.id}
-                      onClick={() => goTo(`/${brand.slug}/domains`)}
-                    >
-                      {brand.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => goTo("/settings/brands")}>
-                    <Settings className="size-4" />
-                    Manage brands
-                  </DropdownMenuItem>
-                  {isSuperAdmin && (
-                    <DropdownMenuItem onClick={() => goTo("/settings/users")}>
-                      <Users className="size-4" />
-                      Manage users
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <nav className="ml-4 hidden items-center gap-1 sm:flex">
-            {nav.map((item) => {
-              const active = pathname.includes(item.match);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[0.875rem] font-medium transition-colors",
-                    active
-                      ? "bg-nav-active text-nav-active-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <Icon className="size-3.5" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-2">
-            {profile?.username && (
-              <span className="hidden text-sm text-muted-foreground sm:inline">
-                {profile.username}
-              </span>
-            )}
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="size-3.5" />
-              Sign out
+      {/* Mobile top bar + drawer */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex h-12 items-center gap-3 border-b border-border bg-background px-4 md:hidden">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="size-4" />
             </Button>
-          </div>
-        </div>
-      </header>
+            <SheetContent
+              side="left"
+              className="w-[220px] max-w-[220px] bg-sidebar p-0"
+              showCloseButton
+            >
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <RailBody
+                brands={brands}
+                activeBrand={activeBrand}
+                nav={nav}
+                pathname={pathname}
+                isSuperAdmin={isSuperAdmin}
+                username={profile?.username}
+                onNavigate={goTo}
+                onSignOut={signOut}
+                onClose={() => setMobileOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
+          <Wordmark className="min-w-0" />
+        </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

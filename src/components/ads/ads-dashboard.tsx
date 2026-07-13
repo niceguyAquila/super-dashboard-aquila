@@ -180,16 +180,16 @@ const selectClassName =
   "flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 const PLATFORM_COLORS = [
-  "#1d4ed8", // blue
-  "#0f766e", // teal
+  "#0f766e", // ink teal
+  "#155e75", // sea
   "#b45309", // amber
   "#be123c", // rose
-  "#334155", // slate
-  "#0369a1", // sky
-  "#155e75", // cyan
+  "#475569", // slate
+  "#0e7490", // cyan
+  "#1d4ed8", // blue
   "#c2410c", // orange
-  "#1e3a5f", // navy
-  "#3f6212", // olive
+  "#115e59", // deep teal
+  "#334155", // graphite
 ];
 
 function spendKey(platformId: string) {
