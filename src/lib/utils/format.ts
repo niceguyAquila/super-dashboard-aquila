@@ -16,6 +16,22 @@ export function normalizeHostname(input: string): string {
     .replace(/^www\./, "");
 }
 
+/** Normalize a landing page URL; empty → null. Invalid → throws. */
+export function normalizeLandingPageUrl(input: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const url = new URL(withProtocol);
+    if (!url.hostname || !url.hostname.includes(".")) {
+      throw new Error("Invalid landing page URL");
+    }
+    return url.toString();
+  } catch {
+    throw new Error("Invalid landing page URL");
+  }
+}
+
 export function formatNumber(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("en-US").format(value);

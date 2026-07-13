@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
 import {
   revalidateDomainsView,
   updateDomain,
@@ -37,6 +37,7 @@ type DomainDetailData = {
   hostname: string;
   title: string | null;
   notes: string | null;
+  landing_page_url: string | null;
   ahrefs_last_synced_at: string | null;
   ahrefs_sync_error: string | null;
   domain_ahrefs_metrics: AhrefsMetrics | AhrefsMetrics[] | null;
@@ -65,6 +66,9 @@ export function DomainDetail({
   const [syncing, setSyncing] = useState(false);
   const [title, setTitle] = useState(domain.title ?? "");
   const [notes, setNotes] = useState(domain.notes ?? "");
+  const [landingPageUrl, setLandingPageUrl] = useState(
+    domain.landing_page_url ?? "",
+  );
 
   const metrics = firstMetrics(domain);
 
@@ -75,6 +79,7 @@ export function DomainDetail({
     fd.set("brandSlug", brand.slug);
     fd.set("title", title);
     fd.set("notes", notes);
+    fd.set("landingPageUrl", landingPageUrl);
     startTransition(async () => {
       const result = await updateDomain(fd);
       if (result.error) toast.error(result.error);
@@ -144,7 +149,9 @@ export function DomainDetail({
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle>Domain details</CardTitle>
-          <CardDescription>Main title and notes for this domain.</CardDescription>
+          <CardDescription>
+            Title, landing page, and notes for this domain.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={saveDomain} className="space-y-4">
@@ -155,6 +162,33 @@ export function DomainDetail({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Primary site title"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="landing-page-url">Landing page URL</Label>
+                {landingPageUrl.trim() && (
+                  <a
+                    href={
+                      /^https?:\/\//i.test(landingPageUrl.trim())
+                        ? landingPageUrl.trim()
+                        : `https://${landingPageUrl.trim()}`
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:underline"
+                  >
+                    Open
+                    <ExternalLink className="size-3" />
+                  </a>
+                )}
+              </div>
+              <Input
+                id="landing-page-url"
+                type="url"
+                value={landingPageUrl}
+                onChange={(e) => setLandingPageUrl(e.target.value)}
+                placeholder="https://example.com/promo"
               />
             </div>
             <div className="space-y-2">

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeHostname } from "@/lib/utils/format";
+import { normalizeHostname, normalizeLandingPageUrl } from "@/lib/utils/format";
 
 export async function createDomain(formData: FormData) {
   const brandId = String(formData.get("brandId") ?? "");
@@ -10,6 +10,14 @@ export async function createDomain(formData: FormData) {
   const hostname = normalizeHostname(String(formData.get("hostname") ?? ""));
   const title = String(formData.get("title") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  let landingPageUrl: string | null = null;
+  try {
+    landingPageUrl = normalizeLandingPageUrl(
+      String(formData.get("landingPageUrl") ?? ""),
+    );
+  } catch {
+    return { error: "Invalid landing page URL" };
+  }
 
   if (!brandId || !hostname) {
     return { error: "Brand and hostname are required" };
@@ -18,7 +26,13 @@ export async function createDomain(formData: FormData) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("domains")
-    .insert({ brand_id: brandId, hostname, title, notes })
+    .insert({
+      brand_id: brandId,
+      hostname,
+      title,
+      notes,
+      landing_page_url: landingPageUrl,
+    })
     .select()
     .single();
 
@@ -139,10 +153,23 @@ export async function updateDomain(formData: FormData) {
       ? normalizeHostname(String(hostnameRaw))
       : undefined;
 
+  let landingPageUrl: string | null = null;
+  try {
+    landingPageUrl = normalizeLandingPageUrl(
+      String(formData.get("landingPageUrl") ?? ""),
+    );
+  } catch {
+    return { error: "Invalid landing page URL" };
+  }
+
   if (!id) return { error: "Invalid domain" };
 
   const supabase = await createClient();
-  const payload: Record<string, string | null> = { title, notes };
+  const payload: Record<string, string | null> = {
+    title,
+    notes,
+    landing_page_url: landingPageUrl,
+  };
   if (hostname) payload.hostname = hostname;
 
   const { error } = await supabase.from("domains").update(payload).eq("id", id);

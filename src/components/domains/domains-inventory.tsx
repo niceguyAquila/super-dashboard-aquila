@@ -4,7 +4,7 @@ import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { Plus, RefreshCw, Trash2, Upload } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Upload, ExternalLink } from "lucide-react";
 import {
   bulkImportDomains,
   createDomain,
@@ -51,6 +51,7 @@ type DomainRow = {
   id: string;
   hostname: string;
   title: string | null;
+  landing_page_url: string | null;
   ahrefs_last_synced_at: string | null;
   ahrefs_sync_error: string | null;
   domain_ahrefs_metrics:
@@ -70,6 +71,7 @@ type DomainRow = {
 type SortKey =
   | "hostname"
   | "title"
+  | "landing"
   | "dr"
   | "backlinks"
   | "refdomains"
@@ -88,6 +90,8 @@ function domainSortValue(row: DomainRow, key: SortKey): string | number {
       return row.hostname.toLowerCase();
     case "title":
       return (row.title ?? "").toLowerCase();
+    case "landing":
+      return (row.landing_page_url ?? "").toLowerCase();
     case "dr":
       return Number(metrics?.domain_rating ?? -1);
     case "backlinks":
@@ -117,6 +121,7 @@ export function DomainsInventory({
   const [syncing, setSyncing] = useState(false);
   const [hostname, setHostname] = useState("");
   const [title, setTitle] = useState("");
+  const [landingPageUrl, setLandingPageUrl] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
@@ -136,7 +141,7 @@ export function DomainsInventory({
     toggleSort: toggleDomainSort,
   } = useSort<DomainRow, SortKey>(domains, "hostname", "asc", getDomainSortValue, {
     defaultDirForKey: (key) =>
-      key === "hostname" || key === "title" ? "asc" : "desc",
+      key === "hostname" || key === "title" || key === "landing" ? "asc" : "desc",
   });
 
   const pagination = usePagination(sortedDomains);
@@ -158,6 +163,7 @@ export function DomainsInventory({
     fd.set("brandSlug", brand.slug);
     fd.set("hostname", hostname);
     fd.set("title", title);
+    fd.set("landingPageUrl", landingPageUrl);
     startTransition(async () => {
       const result = await createDomain(fd);
       if (result.error) {
@@ -167,6 +173,7 @@ export function DomainsInventory({
       toast.success("Domain added");
       setHostname("");
       setTitle("");
+      setLandingPageUrl("");
       setOpen(false);
       await refreshInventory();
     });
@@ -363,6 +370,16 @@ export function DomainsInventory({
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="landing-page-url">Landing page URL</Label>
+                  <Input
+                    id="landing-page-url"
+                    type="url"
+                    placeholder="https://example.com/promo"
+                    value={landingPageUrl}
+                    onChange={(e) => setLandingPageUrl(e.target.value)}
+                  />
+                </div>
                 <Button type="submit" disabled={pending} className="w-full">
                   Save domain
                 </Button>
@@ -400,6 +417,13 @@ export function DomainsInventory({
                     <SortableHead
                       label="Title"
                       sortKey="title"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Landing page"
+                      sortKey="landing"
                       activeKey={sortKey}
                       dir={sortDir}
                       onSort={toggleSort}
@@ -466,6 +490,25 @@ export function DomainsInventory({
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate text-muted-foreground">
                           {domain.title || "—"}
+                        </TableCell>
+                        <TableCell className="max-w-[220px] truncate">
+                          {domain.landing_page_url ? (
+                            <a
+                              href={domain.landing_page_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex max-w-full items-center gap-1 text-emerald-800 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                              title={domain.landing_page_url}
+                            >
+                              <span className="truncate">
+                                {domain.landing_page_url.replace(/^https?:\/\//, "")}
+                              </span>
+                              <ExternalLink className="size-3 shrink-0" />
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="table-numeric">
                           {formatNumber(metrics?.domain_rating ?? null)}
