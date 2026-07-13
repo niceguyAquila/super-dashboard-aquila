@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ExternalLink, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
 import {
   addSocialSignal,
+  bulkDeleteSocialSignals,
   bulkImportSocialSignals,
   deleteSocialSignal,
   updateSocialSignal,
@@ -147,6 +148,8 @@ export function SocialInventory({
     id: string;
     label: string;
   } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const bulkLineCount = bulkText
     .split(/\r?\n/)
@@ -203,10 +206,21 @@ export function SocialInventory({
   );
   const pagination = usePagination(sortedSignals);
 
+  const pageIds = useMemo(
+    () => pagination.pageItems.map((signal) => signal.id),
+    [pagination.pageItems],
+  );
+  const selectedCount = selectedIds.size;
+  const allPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const somePageSelected =
+    pageIds.some((id) => selectedIds.has(id)) && !allPageSelected;
+
   function onSearchChange(value: string) {
     setSearchQuery(value);
     metricsPagination.setPage(1);
     pagination.setPage(1);
+    setSelectedIds(new Set());
   }
 
   function toggleMetricSortAndReset(key: MetricSortKey) {
@@ -217,6 +231,27 @@ export function SocialInventory({
   function toggleSignalSortAndReset(key: SignalSortKey) {
     toggleSignalSort(key);
     pagination.setPage(1);
+  }
+
+  function toggleSelectAllPage() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        for (const id of pageIds) next.delete(id);
+      } else {
+        for (const id of pageIds) next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function openEdit(signal: BrandSocialSignal) {
@@ -299,8 +334,33 @@ export function SocialInventory({
       else {
         toast.success("Removed");
         setDeleteSignal(null);
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(deleteSignal.id);
+          return next;
+        });
         router.refresh();
       }
+    });
+  }
+
+  function removeSelected() {
+    if (selectedCount === 0) return;
+    const fd = new FormData();
+    fd.set("brandSlug", brand.slug);
+    fd.set("ids", [...selectedIds].join(","));
+    startTransition(async () => {
+      const result = await bulkDeleteSocialSignals(fd);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(
+        `Deleted ${result.deleted} social signal${result.deleted === 1 ? "" : "s"}`,
+      );
+      setBulkDeleteOpen(false);
+      setSelectedIds(new Set());
+      router.refresh();
     });
   }
 
@@ -385,12 +445,25 @@ export function SocialInventory({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Social signals</CardTitle>
-          <CardDescription>
-            {signals.length} signal{signals.length === 1 ? "" : "s"} for this
-            brand · click a column header to sort
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle>Social signals</CardTitle>
+            <CardDescription>
+              {signals.length} signal{signals.length === 1 ? "" : "s"} for this
+              brand · click a column header to sort
+            </CardDescription>
+          </div>
+          {selectedCount > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkDeleteOpen(true)}
+              disabled={pending}
+            >
+              <Trash2 className="size-3.5" />
+              Delete {selectedCount}
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <form
@@ -432,6 +505,18 @@ export function SocialInventory({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-emerald-800"
+                        checked={allPageSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = somePageSelected;
+                        }}
+                        onChange={toggleSelectAllPage}
+                        aria-label="Select all on this page"
+                      />
+                    </TableHead>
                     <SortableHead
                       label="Label"
                       sortKey="label"
@@ -466,6 +551,15 @@ export function SocialInventory({
                 <TableBody>
                   {pagination.pageItems.map((signal) => (
                     <TableRow key={signal.id}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-emerald-800"
+                          checked={selectedIds.has(signal.id)}
+                          onChange={() => toggleSelectOne(signal.id)}
+                          aria-label={`Select ${signal.label}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{signal.label}</Badge>
                       </TableCell>
@@ -656,6 +750,15 @@ export function SocialInventory({
         description={`This will remove the “${deleteSignal?.label ?? ""}” signal from this brand.`}
         pending={pending}
         onConfirm={removeSignal}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        title="Delete selected social signals?"
+        description={`This will permanently remove ${selectedCount} selected signal${selectedCount === 1 ? "" : "s"}.`}
+        pending={pending}
+        onConfirm={removeSelected}
       />
     </div>
   );

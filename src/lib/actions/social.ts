@@ -136,6 +136,28 @@ export async function deleteSocialSignal(formData: FormData) {
   return { ok: true };
 }
 
+export async function bulkDeleteSocialSignals(formData: FormData) {
+  const brandSlug = String(formData.get("brandSlug") ?? "");
+  const rawIds = String(formData.get("ids") ?? "");
+  const ids = rawIds
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  if (ids.length === 0) return { error: "No signals selected" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("brand_social_signals")
+    .delete()
+    .in("id", ids);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/${brandSlug}/social`);
+  return { ok: true, deleted: ids.length };
+}
+
 export async function updateSocialSignal(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const brandSlug = String(formData.get("brandSlug") ?? "");
