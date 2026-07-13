@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Globe2,
   LogOut,
-  Megaphone,
   Menu,
   Settings,
   Share2,
@@ -301,12 +300,6 @@ export function AppShell({
           label: "Social",
           icon: Share2,
           match: "/social",
-        },
-        {
-          href: `${brandBase}/ads`,
-          label: "ADS",
-          icon: Megaphone,
-          match: "/ads",
         },
       ]
     : [];
