@@ -45,7 +45,13 @@ type NavItem = {
   match: string;
 };
 
-function Wordmark({ className }: { className?: string }) {
+function Wordmark({
+  className,
+  tone = "content",
+}: {
+  className?: string;
+  tone?: "content" | "rail";
+}) {
   return (
     <Link
       href="/"
@@ -55,8 +61,13 @@ function Wordmark({ className }: { className?: string }) {
         aria-hidden
         className="size-2.5 shrink-0 rounded-sm bg-nav-active"
       />
-      <span className="font-display text-[1.35rem] font-semibold tracking-tight text-foreground">
-        Brand Work
+      <span
+        className={cn(
+          "font-display text-[1.2rem] font-semibold leading-tight tracking-tight",
+          tone === "rail" ? "text-sidebar-foreground" : "text-foreground",
+        )}
+      >
+        Aquila Dashboard
       </span>
     </Link>
   );
@@ -86,8 +97,8 @@ function RailNav({
             className={cn(
               "relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9rem] font-medium transition-colors",
               active
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/55 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
             )}
           >
             {active && (
@@ -123,7 +134,10 @@ function BrandSwitcher({
           <Button
             variant="outline"
             size="sm"
-            className={cn("w-full justify-between gap-1.5", className)}
+            className={cn(
+              "w-full justify-between gap-1.5 border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              className,
+            )}
           >
             <span className="truncate">
               {activeBrand?.name ?? "Select brand"}
@@ -169,7 +183,7 @@ function RailFooter({
         <button
           type="button"
           onClick={() => onNavigate("/settings/brands")}
-          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[0.875rem] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[0.875rem] text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <Settings className="size-4 shrink-0" />
           Manage brands
@@ -178,7 +192,7 @@ function RailFooter({
           <button
             type="button"
             onClick={() => onNavigate("/settings/users")}
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[0.875rem] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[0.875rem] text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
             <Users className="size-4 shrink-0" />
             Manage users
@@ -188,14 +202,14 @@ function RailFooter({
 
       <div className="flex items-center gap-2 px-1">
         {username && (
-          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate text-sm text-sidebar-foreground/50">
             {username}
           </span>
         )}
         <Button
           variant="ghost"
           size="sm"
-          className="shrink-0"
+          className="shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
           onClick={onSignOut}
         >
           <LogOut className="size-3.5" />
@@ -228,8 +242,8 @@ function RailBody({
   onClose?: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col gap-6 p-5">
-      <Wordmark />
+    <div className="flex h-full flex-col gap-6 p-5 text-sidebar-foreground">
+      <Wordmark tone="rail" />
 
       <BrandSwitcher
         brands={brands}
@@ -327,7 +341,7 @@ export function AppShell({
             </Button>
             <SheetContent
               side="left"
-              className="w-[220px] max-w-[220px] bg-sidebar p-0"
+              className="w-[220px] max-w-[220px] border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
               showCloseButton
             >
               <SheetTitle className="sr-only">Navigation</SheetTitle>

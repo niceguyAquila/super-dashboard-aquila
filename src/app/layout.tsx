@@ -23,7 +23,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Brand Work Dashboard",
+  title: "Aquila Dashboard",
   description:
     "Track domain inventory, Ahrefs metrics, social signals, and ADS performance by brand.",
 };

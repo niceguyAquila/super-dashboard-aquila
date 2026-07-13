@@ -137,7 +137,9 @@ export function LoginForm({ needsSetup }: LoginFormProps) {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="font-display text-2xl font-semibold tracking-tight">Brand Work</CardTitle>
+        <CardTitle className="font-display text-2xl font-semibold tracking-tight">
+          Aquila Dashboard
+        </CardTitle>
         <CardDescription>
           Sign in with the username and password provided by your admin.
         </CardDescription>

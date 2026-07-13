@@ -1,4 +1,4 @@
-# Brand Work Dashboard
+# Aquila Dashboard
 
 Brand-scoped dashboard for **domain inventory** (Ahrefs sync + social signals) and **ADS performance** (manual spend / regs / deposits / CPR).
 
