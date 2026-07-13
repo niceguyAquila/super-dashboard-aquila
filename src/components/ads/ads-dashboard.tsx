@@ -91,7 +91,10 @@ function adsSortValue(entry: AdEntry, key: AdsSortKey): string | number {
 }
 
 function toInputDate(d = new Date()) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function defaultFrom() {
@@ -100,8 +103,98 @@ function defaultFrom() {
   return toInputDate(d);
 }
 
+type DatePresetId =
+  | "today"
+  | "yesterday"
+  | "last7"
+  | "thisWeek"
+  | "thisMonth"
+  | "lastMonth"
+  | "thisYear";
+
+type DateRange = { from: string; to: string };
+
+const DATE_PRESETS: { id: DatePresetId; label: string }[] = [
+  { id: "today", label: "Today" },
+  { id: "yesterday", label: "Yesterday" },
+  { id: "last7", label: "Last 7 days" },
+  { id: "thisWeek", label: "This week" },
+  { id: "thisMonth", label: "This month" },
+  { id: "lastMonth", label: "Last month" },
+  { id: "thisYear", label: "This year" },
+];
+
+function getDatePresetRange(id: DatePresetId, now = new Date()): DateRange {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (id) {
+    case "today":
+      return { from: toInputDate(today), to: toInputDate(today) };
+    case "yesterday": {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return { from: toInputDate(yesterday), to: toInputDate(yesterday) };
+    }
+    case "last7": {
+      const start = new Date(today);
+      start.setDate(start.getDate() - 6);
+      return { from: toInputDate(start), to: toInputDate(today) };
+    }
+    case "thisWeek": {
+      // Week starts Monday
+      const day = today.getDay();
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      const monday = new Date(today);
+      monday.setDate(monday.getDate() + mondayOffset);
+      const sunday = new Date(monday);
+      sunday.setDate(sunday.getDate() + 6);
+      return { from: toInputDate(monday), to: toInputDate(sunday) };
+    }
+    case "thisMonth": {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return { from: toInputDate(start), to: toInputDate(end) };
+    }
+    case "lastMonth": {
+      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const end = new Date(today.getFullYear(), today.getMonth(), 0);
+      return { from: toInputDate(start), to: toInputDate(end) };
+    }
+    case "thisYear": {
+      const start = new Date(today.getFullYear(), 0, 1);
+      const end = new Date(today.getFullYear(), 11, 31);
+      return { from: toInputDate(start), to: toInputDate(end) };
+    }
+  }
+}
+
+function matchDatePreset(from: string, to: string): DatePresetId | null {
+  for (const preset of DATE_PRESETS) {
+    const range = getDatePresetRange(preset.id);
+    if (range.from === from && range.to === to) return preset.id;
+  }
+  return null;
+}
+
 const selectClassName =
   "flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+const PLATFORM_COLORS = [
+  "#065f46",
+  "#b45309",
+  "#1d4ed8",
+  "#be123c",
+  "#7c3aed",
+  "#0f766e",
+  "#c2410c",
+  "#0369a1",
+  "#a21caf",
+  "#4d7c0f",
+];
+
+function spendKey(platformId: string) {
+  return `spend_${platformId}`;
+}
 
 export function AdsDashboard({
   brand,
@@ -109,12 +202,14 @@ export function AdsDashboard({
   entries,
   initialFrom,
   initialTo,
+  initialPlatformId,
 }: {
   brand: Brand;
   platforms: AdPlatform[];
   entries: AdEntry[];
   initialFrom?: string;
   initialTo?: string;
+  initialPlatformId?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -123,6 +218,9 @@ export function AdsDashboard({
   const [editingEntry, setEditingEntry] = useState<AdEntry | null>(null);
   const [from, setFrom] = useState(initialFrom ?? defaultFrom());
   const [to, setTo] = useState(initialTo ?? toInputDate());
+  const [filterPlatformId, setFilterPlatformId] = useState(
+    initialPlatformId ?? "",
+  );
   const activePlatforms = useMemo(
     () => platforms.filter((p) => p.is_active),
     [platforms],
@@ -175,32 +273,66 @@ export function AdsDashboard({
     pagination.setPage(1);
   }
 
-  const chartData = useMemo(() => {
-    const byDate = new Map<
-      string,
-      { date: string; spend: number; registrations: number; deposits: number }
-    >();
+  const chartPlatforms = useMemo(() => {
+    const seen = new Map<string, string>();
     for (const e of entries) {
-      const existing = byDate.get(e.entry_date) ?? {
-        date: e.entry_date,
-        spend: 0,
-        registrations: 0,
-        deposits: 0,
-      };
-      existing.spend += Number(e.spend);
-      existing.registrations += Number(e.registrations);
-      existing.deposits += Number(e.deposits);
-      byDate.set(e.entry_date, existing);
+      if (!seen.has(e.platform_id)) {
+        seen.set(
+          e.platform_id,
+          platformName(e) ||
+            platforms.find((p) => p.id === e.platform_id)?.name ||
+            "Unknown",
+        );
+      }
     }
-    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-  }, [entries]);
+    return [...seen.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [entries, platforms]);
+
+  const chartData = useMemo(() => {
+    const byDate = new Map<string, Record<string, string | number>>();
+    for (const e of entries) {
+      const row = byDate.get(e.entry_date) ?? { date: e.entry_date };
+      const key = spendKey(e.platform_id);
+      row[key] = Number(row[key] ?? 0) + Number(e.spend);
+      byDate.set(e.entry_date, row);
+    }
+    return [...byDate.values()]
+      .map((row) => {
+        const filled = { ...row };
+        for (const platform of chartPlatforms) {
+          const key = spendKey(platform.id);
+          if (filled[key] == null) filled[key] = 0;
+        }
+        return filled;
+      })
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  }, [entries, chartPlatforms]);
+
+  const activeDatePreset = useMemo(
+    () => matchDatePreset(from, to),
+    [from, to],
+  );
+
+  function pushFilters(nextFrom: string, nextTo: string, platform: string) {
+    const params = new URLSearchParams();
+    if (nextFrom) params.set("from", nextFrom);
+    if (nextTo) params.set("to", nextTo);
+    if (platform) params.set("platform", platform);
+    router.push(`/${brand.slug}/ads?${params.toString()}`);
+  }
 
   function applyFilters(e: React.FormEvent) {
     e.preventDefault();
-    const params = new URLSearchParams();
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    router.push(`/${brand.slug}/ads?${params.toString()}`);
+    pushFilters(from, to, filterPlatformId);
+  }
+
+  function applyDatePreset(id: DatePresetId) {
+    const range = getDatePresetRange(id);
+    setFrom(range.from);
+    setTo(range.to);
+    pushFilters(range.from, range.to, filterPlatformId);
   }
 
   function resetEntryForm() {
@@ -427,7 +559,22 @@ export function AdsDashboard({
       </Dialog>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex flex-wrap gap-2">
+            {DATE_PRESETS.map((preset) => (
+              <Button
+                key={preset.id}
+                type="button"
+                size="sm"
+                variant={
+                  activeDatePreset === preset.id ? "default" : "outline"
+                }
+                onClick={() => applyDatePreset(preset.id)}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
           <form
             onSubmit={applyFilters}
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -450,8 +597,25 @@ export function AdsDashboard({
                 onChange={(e) => setTo(e.target.value)}
               />
             </div>
+            <div className="min-w-[12rem] space-y-2">
+              <Label htmlFor="filter-platform">Platform</Label>
+              <select
+                id="filter-platform"
+                className={selectClassName}
+                value={filterPlatformId}
+                onChange={(e) => setFilterPlatformId(e.target.value)}
+              >
+                <option value="">All platforms</option>
+                {platforms.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {!p.is_active ? " (inactive)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Button type="submit" variant="outline">
-              Apply range
+              Apply filters
             </Button>
           </form>
         </CardContent>
@@ -496,7 +660,7 @@ export function AdsDashboard({
         <CardHeader>
           <CardTitle>Trend</CardTitle>
           <CardDescription>
-            Spend vs registrations over the selected range (all platforms).
+            Daily spend by platform over the selected filters.
           </CardDescription>
         </CardHeader>
         <CardContent className="h-72">
@@ -509,32 +673,25 @@ export function AdsDashboard({
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tick={{ fontSize: 12 }}
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip
+                  formatter={(value, name) => [
+                    formatCurrency(Number(value ?? 0)),
+                    String(name),
+                  ]}
                 />
-                <Tooltip />
                 <Legend />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="spend"
-                  stroke="#065f46"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Spend"
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="registrations"
-                  stroke="#b45309"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Registrations"
-                />
+                {chartPlatforms.map((platform, index) => (
+                  <Line
+                    key={platform.id}
+                    type="monotone"
+                    dataKey={spendKey(platform.id)}
+                    stroke={PLATFORM_COLORS[index % PLATFORM_COLORS.length]}
+                    strokeWidth={2}
+                    dot={false}
+                    name={platform.name}
+                  />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           )}

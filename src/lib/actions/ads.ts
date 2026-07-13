@@ -91,6 +91,7 @@ export async function getAdEntries(
   brandId: string,
   from?: string,
   to?: string,
+  platformId?: string,
 ) {
   const supabase = await createClient();
   let query = supabase
@@ -101,6 +102,7 @@ export async function getAdEntries(
 
   if (from) query = query.gte("entry_date", from);
   if (to) query = query.lte("entry_date", to);
+  if (platformId) query = query.eq("platform_id", platformId);
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
