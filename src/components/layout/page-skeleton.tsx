@@ -63,9 +63,9 @@ export function PageSkeleton({
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f7f5f0_0%,#ffffff_28%,#f0f7f4_100%)]">
-      <div className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
+    <div className="min-h-screen bg-shell-bg">
+      <div className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
+        <div className="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4 sm:px-6">
           <Skeleton className="h-5 w-28" />
           <Skeleton className="h-7 w-36" />
           <Skeleton className="ml-auto h-7 w-24" />

@@ -16,7 +16,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#f7f5f0_0%,#ffffff_28%,#f0f7f4_100%)] px-4">
+    <main className="flex min-h-screen items-center justify-center bg-shell-bg px-4">
       <div className="w-full max-w-md space-y-4 rounded-xl bg-card p-6 text-center ring-1 ring-foreground/10">
         <h1 className="text-2xl font-semibold tracking-tight">
           Something went wrong

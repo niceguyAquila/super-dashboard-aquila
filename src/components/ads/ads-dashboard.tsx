@@ -180,16 +180,16 @@ const selectClassName =
   "flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 const PLATFORM_COLORS = [
-  "#065f46",
-  "#b45309",
-  "#1d4ed8",
-  "#be123c",
-  "#7c3aed",
-  "#0f766e",
-  "#c2410c",
-  "#0369a1",
-  "#a21caf",
-  "#4d7c0f",
+  "#1d4ed8", // blue
+  "#0f766e", // teal
+  "#b45309", // amber
+  "#be123c", // rose
+  "#334155", // slate
+  "#0369a1", // sky
+  "#155e75", // cyan
+  "#c2410c", // orange
+  "#1e3a5f", // navy
+  "#3f6212", // olive
 ];
 
 function spendKey(platformId: string) {
@@ -558,69 +558,6 @@ export function AdsDashboard({
         </DialogContent>
       </Dialog>
 
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex flex-wrap gap-2">
-            {DATE_PRESETS.map((preset) => (
-              <Button
-                key={preset.id}
-                type="button"
-                size="sm"
-                variant={
-                  activeDatePreset === preset.id ? "default" : "outline"
-                }
-                onClick={() => applyDatePreset(preset.id)}
-              >
-                {preset.label}
-              </Button>
-            ))}
-          </div>
-          <form
-            onSubmit={applyFilters}
-            className="flex flex-col gap-3 sm:flex-row sm:items-end"
-          >
-            <div className="space-y-2">
-              <Label htmlFor="from">From</Label>
-              <Input
-                id="from"
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="to">To</Label>
-              <Input
-                id="to"
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-              />
-            </div>
-            <div className="min-w-[12rem] space-y-2">
-              <Label htmlFor="filter-platform">Platform</Label>
-              <select
-                id="filter-platform"
-                className={selectClassName}
-                value={filterPlatformId}
-                onChange={(e) => setFilterPlatformId(e.target.value)}
-              >
-                <option value="">All platforms</option>
-                {platforms.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {!p.is_active ? " (inactive)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Button type="submit" variant="outline">
-              Apply filters
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
@@ -699,6 +636,69 @@ export function AdsDashboard({
       </Card>
 
       <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex flex-wrap gap-2">
+            {DATE_PRESETS.map((preset) => (
+              <Button
+                key={preset.id}
+                type="button"
+                size="sm"
+                variant={
+                  activeDatePreset === preset.id ? "default" : "outline"
+                }
+                onClick={() => applyDatePreset(preset.id)}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+          <form
+            onSubmit={applyFilters}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="from">From</Label>
+              <Input
+                id="from"
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="to">To</Label>
+              <Input
+                id="to"
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+              />
+            </div>
+            <div className="min-w-[12rem] space-y-2">
+              <Label htmlFor="filter-platform">Platform</Label>
+              <select
+                id="filter-platform"
+                className={selectClassName}
+                value={filterPlatformId}
+                onChange={(e) => setFilterPlatformId(e.target.value)}
+              >
+                <option value="">All platforms</option>
+                {platforms.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {!p.is_active ? " (inactive)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button type="submit" variant="outline">
+              Apply filters
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle>Entries</CardTitle>
           <CardDescription>
@@ -738,14 +738,14 @@ export function AdsDashboard({
                       onSort={toggleSort}
                     />
                     <SortableHead
-                      label="Regs"
+                      label="Registers"
                       sortKey="regs"
                       activeKey={sortKey}
                       dir={sortDir}
                       onSort={toggleSort}
                     />
                     <SortableHead
-                      label="Deposits"
+                      label="FTD"
                       sortKey="deposits"
                       activeKey={sortKey}
                       dir={sortDir}

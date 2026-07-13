@@ -80,14 +80,14 @@ export function AppShell({
     : [];
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f7f5f0_0%,#ffffff_28%,#f0f7f4_100%)]">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
+    <div className="min-h-screen bg-shell-bg">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur">
+        <div className="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4 sm:px-6">
           <Link
             href="/"
             className="flex items-center gap-2 text-[0.95rem] font-semibold tracking-tight"
           >
-            <LayoutDashboard className="size-4 text-emerald-700" />
+            <LayoutDashboard className="size-4 text-nav-active" />
             <span>Brand Work</span>
           </Link>
 
@@ -146,7 +146,7 @@ export function AppShell({
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[0.875rem] font-medium transition-colors",
                     active
-                      ? "bg-emerald-900 text-emerald-50"
+                      ? "bg-nav-active text-nav-active-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >

@@ -117,7 +117,7 @@ function ExternalLinkCell({ value }: { value: string }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex max-w-full items-center gap-1 text-emerald-800 hover:underline"
+      className="inline-flex max-w-full items-center gap-1 text-nav-active hover:underline"
     >
       <span className="truncate">{value.trim()}</span>
       <ExternalLink className="size-3 shrink-0" />
@@ -508,7 +508,7 @@ export function SocialInventory({
                     <TableHead className="w-10">
                       <input
                         type="checkbox"
-                        className="size-4 accent-emerald-800"
+                        className="size-4 accent-nav-active"
                         checked={allPageSelected}
                         ref={(el) => {
                           if (el) el.indeterminate = somePageSelected;
@@ -554,7 +554,7 @@ export function SocialInventory({
                       <TableCell>
                         <input
                           type="checkbox"
-                          className="size-4 accent-emerald-800"
+                          className="size-4 accent-nav-active"
                           checked={selectedIds.has(signal.id)}
                           onChange={() => toggleSelectOne(signal.id)}
                           aria-label={`Select ${signal.label}`}
