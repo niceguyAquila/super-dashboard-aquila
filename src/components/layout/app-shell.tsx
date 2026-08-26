@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronDown,
+  CreditCard,
   Globe2,
   LogOut,
   Menu,
@@ -186,6 +187,14 @@ function RailFooter({
         >
           <Settings className="size-4 shrink-0" />
           Manage brands
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate("/settings/subscriptions")}
+          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[0.875rem] text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        >
+          <CreditCard className="size-4 shrink-0" />
+          Subscriptions
         </button>
         {isSuperAdmin && (
           <button

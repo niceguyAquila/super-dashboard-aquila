@@ -96,3 +96,33 @@ export type AdEntry = {
 export type DomainWithMetrics = Domain & {
   domain_ahrefs_metrics: DomainAhrefsMetrics | null;
 };
+
+export type SubscriptionKind = "tool" | "server";
+export type BillingCycle = "monthly" | "yearly" | "one_time";
+export type SubscriptionStatus = "active" | "cancelled" | "expired";
+
+export type Subscription = {
+  id: string;
+  name: string;
+  kind: SubscriptionKind;
+  vendor: string | null;
+  cost: number | null;
+  currency: string;
+  billing_cycle: BillingCycle;
+  started_at: string | null;
+  renews_at: string | null;
+  status: SubscriptionStatus;
+  login_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SubscriptionSummary = {
+  monthlyFee: number;
+  activeTools: number;
+  activeServers: number;
+  totalActive: number;
+  renewingSoon: number;
+  pastDue: number;
+};
