@@ -269,11 +269,16 @@ function RailBody({
         </Link>
       </nav>
 
-      <BrandSwitcher
-        brands={brands}
-        activeBrand={activeBrand}
-        onSelect={onNavigate}
-      />
+      <div className="space-y-2">
+        <p className="px-1 text-[0.7rem] font-medium uppercase tracking-wide text-sidebar-foreground/45">
+          Domains
+        </p>
+        <BrandSwitcher
+          brands={brands}
+          activeBrand={activeBrand}
+          onSelect={onNavigate}
+        />
+      </div>
 
       <RailNav nav={nav} pathname={pathname} onNavigate={onClose} />
 
