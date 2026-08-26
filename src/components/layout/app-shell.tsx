@@ -188,14 +188,6 @@ function RailFooter({
           <Settings className="size-4 shrink-0" />
           Manage brands
         </button>
-        <button
-          type="button"
-          onClick={() => onNavigate("/settings/subscriptions")}
-          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[0.875rem] text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-        >
-          <CreditCard className="size-4 shrink-0" />
-          Subscriptions
-        </button>
         {isSuperAdmin && (
           <button
             type="button"
@@ -249,9 +241,33 @@ function RailBody({
   onSignOut: () => void;
   onClose?: () => void;
 }) {
+  const subscriptionsActive = pathname.startsWith("/settings/subscriptions");
+
   return (
     <div className="flex h-full flex-col gap-6 p-5 text-sidebar-foreground">
       <Wordmark tone="rail" />
+
+      <nav className="flex flex-col gap-0.5">
+        <Link
+          href="/settings/subscriptions"
+          onClick={onClose}
+          className={cn(
+            "relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.9rem] font-medium transition-colors",
+            subscriptionsActive
+              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+              : "text-sidebar-foreground/55 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+          )}
+        >
+          {subscriptionsActive && (
+            <span
+              aria-hidden
+              className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-nav-active"
+            />
+          )}
+          <CreditCard className="size-4 shrink-0 opacity-80" />
+          Subscriptions
+        </Link>
+      </nav>
 
       <BrandSwitcher
         brands={brands}

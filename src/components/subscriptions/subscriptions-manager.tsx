@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   createSubscription,
   deleteSubscription,
+  renewSubscription,
   updateSubscription,
 } from "@/lib/actions/subscriptions";
 import {
@@ -569,6 +570,7 @@ function SubscriptionRow({
     subscription.renews_at,
     subscription.status,
   );
+  const canRenew = subscription.billing_cycle !== "one_time";
 
   function remove() {
     const fd = new FormData();
@@ -581,6 +583,20 @@ function SubscriptionRow({
         setConfirmOpen(false);
         router.refresh();
       }
+    });
+  }
+
+  function renew() {
+    const fd = new FormData();
+    fd.set("id", subscription.id);
+    startTransition(async () => {
+      const result = await renewSubscription(fd);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`Renewed — next date ${result.renews_at}`);
+      router.refresh();
     });
   }
 
@@ -619,6 +635,19 @@ function SubscriptionRow({
       </TableCell>
       <TableCell className="capitalize">{subscription.status}</TableCell>
       <TableCell className="space-x-2 text-right">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={renew}
+          disabled={pending || !canRenew}
+          title={
+            canRenew
+              ? "Advance renew date by one billing period"
+              : "One-time subscriptions have no renewal period"
+          }
+        >
+          Renew
+        </Button>
         <Button size="sm" variant="outline" onClick={onEdit}>
           Edit
         </Button>

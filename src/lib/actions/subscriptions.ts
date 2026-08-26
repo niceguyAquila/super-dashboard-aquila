@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { nextRenewalDate } from "@/lib/subscriptions/renew";
 import type {
   BillingCycle,
   SubscriptionKind,
@@ -140,4 +141,35 @@ export async function deleteSubscription(formData: FormData) {
 
   revalidatePath("/settings/subscriptions");
   return { ok: true };
+}
+
+export async function renewSubscription(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "Invalid subscription" };
+
+  const supabase = await createClient();
+  const { data: existing, error: loadError } = await supabase
+    .from("subscriptions")
+    .select("id, renews_at, billing_cycle")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (loadError) return { error: loadError.message };
+  if (!existing) return { error: "Subscription not found" };
+
+  const next = nextRenewalDate(
+    existing.renews_at,
+    existing.billing_cycle as BillingCycle,
+  );
+  if ("error" in next) return { error: next.error };
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({ renews_at: next.date, status: "active" })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings/subscriptions");
+  return { ok: true as const, renews_at: next.date };
 }
